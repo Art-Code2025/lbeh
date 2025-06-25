@@ -7,6 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "concurrently \"node server.js\" \"cd frontend && npm run dev\"",
+    "dev:netlify": "netlify dev",
+    "start:netlify": "./run-netlify.sh",
     "build": "cd frontend && npm run build",
     "preview": "cd frontend && npm run preview",
     "install-all": "npm install && cd frontend && npm install",
