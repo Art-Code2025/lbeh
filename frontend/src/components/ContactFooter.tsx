@@ -101,8 +101,8 @@ const ContactFooter: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
-
+              </div>
+              
       {/* Main Footer Content */}
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -132,7 +132,7 @@ const ContactFooter: React.FC = () => {
               </a>
             </div>
           </div>
-
+          
           {/* Quick Links */}
           <div>
             <h4 className="text-lg font-semibold mb-6 text-cyan-400">روابط سريعة</h4>
@@ -149,8 +149,8 @@ const ContactFooter: React.FC = () => {
                 </li>
               ))}
             </ul>
-          </div>
-
+              </div>
+              
           {/* Services */}
           <div>
             <h4 className="text-lg font-semibold mb-6 text-cyan-400">خدماتنا</h4>
@@ -168,7 +168,7 @@ const ContactFooter: React.FC = () => {
               ))}
             </ul>
           </div>
-
+          
           {/* Contact Info */}
           <div>
             <h4 className="text-lg font-semibold mb-6 text-cyan-400">تواصل معنا</h4>
@@ -187,17 +187,17 @@ const ContactFooter: React.FC = () => {
                   <a href="tel:+201234567890" className="text-slate-300 hover:text-cyan-400 transition-colors">
                     +20 123 456 7890
                   </a>
-                </div>
-              </div>
-              
+                    </div>
+                  </div>
+                  
               <div className="flex items-center gap-3">
                 <Mail className="w-5 h-5 text-cyan-400 flex-shrink-0" />
                 <div>
                   <a href="mailto:info@labeeh.com" className="text-slate-300 hover:text-cyan-400 transition-colors">
                     info@labeeh.com
-                  </a>
-                </div>
-              </div>
+                      </a>
+                    </div>
+                  </div>
               
               <div className="flex items-center gap-3">
                 <Clock className="w-5 h-5 text-cyan-400 flex-shrink-0" />
@@ -243,7 +243,7 @@ const ContactFooter: React.FC = () => {
           <ArrowUp className="w-5 h-5" />
         </button>
       )}
-    </footer>
+      </footer>
   );
 };
 

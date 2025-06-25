@@ -83,19 +83,19 @@ const Navbar: React.FC = () => {
                 </span>
               )}
             </Link>
-            
-            <Link
+
+              <Link
               to="/about"
               className={`flex items-center space-x-reverse space-x-2 px-5 py-3 rounded-xl text-base font-semibold transition-all duration-300 ${
                 isActive('/about') 
                   ? 'text-amber-700 bg-white/80 backdrop-blur-sm shadow-md border border-amber-100' 
                   : 'text-slate-700 hover:text-amber-700 hover:bg-white/60 hover:backdrop-blur-sm hover:shadow-sm'
               }`}
-            >
+              >
               <Users size={18} />
               <span>من نحن</span>
-            </Link>
-            
+              </Link>
+
             <Link
               to="/contact"
               className={`flex items-center space-x-reverse space-x-2 px-5 py-3 rounded-xl text-base font-semibold transition-all duration-300 ${
@@ -146,7 +146,7 @@ const Navbar: React.FC = () => {
                 <span>الرئيسية</span>
               </Link>
               
-              <Link
+                <Link
                 to="/categories"
                 onClick={() => setIsOpen(false)}
                 className={`flex items-center space-x-reverse space-x-3 px-5 py-4 rounded-xl text-base font-semibold transition-all duration-300 ${
@@ -166,16 +166,16 @@ const Navbar: React.FC = () => {
               
               <Link
                 to="/about"
-                onClick={() => setIsOpen(false)}
+                  onClick={() => setIsOpen(false)}
                 className={`flex items-center space-x-reverse space-x-3 px-5 py-4 rounded-xl text-base font-semibold transition-all duration-300 ${
                   isActive('/about') 
                     ? 'text-amber-700 bg-amber-50/80 backdrop-blur-sm shadow-sm' 
                     : 'text-slate-700 hover:text-amber-700 hover:bg-amber-50/50'
                 }`}
-              >
+                >
                 <Users size={20} />
                 <span>من نحن</span>
-              </Link>
+                </Link>
               
               <Link
                 to="/contact"

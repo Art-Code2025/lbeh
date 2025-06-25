@@ -252,7 +252,7 @@ const Categories: React.FC = () => {
                     </h4>
                     <div className="grid grid-cols-1 gap-3">
                       <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
-                        <Clock className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                          <Clock className="w-4 h-4 text-blue-500 flex-shrink-0" />
                         <span className="text-sm text-slate-700">خدمة سريعة ومضمونة</span>
                       </div>
                       <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
@@ -262,7 +262,7 @@ const Categories: React.FC = () => {
                       <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
                         <Star className="w-4 h-4 text-yellow-500 flex-shrink-0" />
                         <span className="text-sm text-slate-700">جودة عالية</span>
-                      </div>
+                        </div>
                     </div>
                   </div>
 

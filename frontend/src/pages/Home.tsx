@@ -210,9 +210,9 @@ const Home: React.FC = () => {
             <div className="order-1 lg:order-2 flex justify-center lg:justify-end scroll-animate opacity-0 translate-x-8">
               <div className="relative max-w-lg w-full">
                 <div className="relative z-10 transform hover:scale-105 transition-transform duration-500">
-                  <img 
+                <img
                     src="/coverr.png" 
-                    alt="لبيه - خدمات توصيل وصيانة" 
+                  alt="لبيه - خدمات توصيل وصيانة"
                     className="w-full h-auto rounded-3xl shadow-2xl"
                   />
                   
@@ -222,7 +222,7 @@ const Home: React.FC = () => {
                       <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                       <span className="text-sm font-semibold text-slate-700">خدمة متاحة</span>
                       <CheckCircle className="w-5 h-5 text-green-500" />
-                    </div>
+                  </div>
                   </div>
                   
                   <div className="absolute -bottom-6 -left-6 bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-xl animate-float" style={{animationDelay: '1s'}}>
@@ -230,9 +230,9 @@ const Home: React.FC = () => {
                       <div className="flex -space-x-2">
                         <div className="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center text-white text-xs font-bold">4.9</div>
                         <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                      </div>
+                </div>
                       <span className="text-sm font-semibold text-slate-700">تقييم ممتاز</span>
-                    </div>
+                  </div>
                   </div>
                 </div>
                 
@@ -649,9 +649,9 @@ const Home: React.FC = () => {
               <div className="relative bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-cyan-100/50">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 text-amber-400 fill-current" />
-                    ))}
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-5 h-5 text-amber-400 fill-current" />
+                  ))}
                   </div>
                   <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
                     <span className="text-white font-bold text-lg">أ</span>
@@ -680,9 +680,9 @@ const Home: React.FC = () => {
               <div className="relative bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-cyan-100/50">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 text-amber-400 fill-current" />
-                    ))}
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-5 h-5 text-amber-400 fill-current" />
+                  ))}
                   </div>
                   <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
                     <span className="text-white font-bold text-lg">ف</span>
@@ -711,9 +711,9 @@ const Home: React.FC = () => {
               <div className="relative bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-cyan-100/50">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 text-amber-400 fill-current" />
-                    ))}
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-5 h-5 text-amber-400 fill-current" />
+                  ))}
                   </div>
                   <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
                     <span className="text-white font-bold text-lg">س</span>
@@ -798,7 +798,7 @@ const Home: React.FC = () => {
                 </div>
                 <p className="text-slate-300 text-sm md:text-base leading-relaxed max-w-md">
                   منصة رائدة في تقديم خدمات التوصيل والصيانة المنزلية بأعلى معايير الجودة والاحترافية لأهالي الخارجة والمناطق المحيطة.
-                </p>
+              </p>
               </div>
 
               {/* Social Media */}
@@ -826,7 +826,7 @@ const Home: React.FC = () => {
 
             {/* Links & Contact */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              {/* Quick Links */}
+            {/* Quick Links */}
               <div>
                 <h4 className="text-white font-bold text-lg mb-4">روابط سريعة</h4>
                 <ul className="space-y-3 text-sm md:text-base">
@@ -846,10 +846,10 @@ const Home: React.FC = () => {
                     <Phone className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
                     اتصل بنا
                   </Link></li>
-                </ul>
-              </div>
+              </ul>
+            </div>
 
-              {/* Contact Info */}
+            {/* Contact Info */}
               <div>
                 <h4 className="text-white font-bold text-lg mb-4">تواصل معنا</h4>
                 <ul className="space-y-3 text-sm md:text-base">
@@ -866,22 +866,22 @@ const Home: React.FC = () => {
                       <p className="font-medium text-white">هاتف</p>
                       <a href="tel:+20123456789" className="hover:text-cyan-400 transition-colors duration-300">0123-456-789</a>
                     </div>
-                  </li>
+                </li>
                   <li className="flex items-start gap-3 text-slate-300">
                     <Mail className="w-5 h-5 text-cyan-400 mt-1 flex-shrink-0" />
                     <div>
                       <p className="font-medium text-white">البريد الإلكتروني</p>
                       <a href="mailto:info@labeeh.com" className="hover:text-cyan-400 transition-colors duration-300">info@labeeh.com</a>
                     </div>
-                  </li>
+                </li>
                   <li className="flex items-start gap-3 text-slate-300">
                     <Clock className="w-5 h-5 text-cyan-400 mt-1 flex-shrink-0" />
                     <div>
                       <p className="font-medium text-white">ساعات العمل</p>
                       <p>24/7 - طوال أيام الأسبوع</p>
                     </div>
-                  </li>
-                </ul>
+                </li>
+              </ul>
               </div>
             </div>
           </div>
