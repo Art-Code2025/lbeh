@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
+import { useParams, Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { AlertCircle, ChevronRight, Clock, MapPin, Calendar, Star, Shield, Award, Users } from 'lucide-react';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface Service {
   id: number;
@@ -26,15 +28,8 @@ interface BookingFormData {
 export default function ServiceDetail() {
   const { id } = useParams();
   const [service, setService] = useState<Service | null>(null);
-  const [formData, setFormData] = useState<BookingFormData>({
-    fullName: '',
-    phoneNumber: '',
-    address: '',
-    serviceDetails: ''
-  });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [bookingData, setBookingData] = useState<BookingFormData>({
     fullName: '',
@@ -44,7 +39,9 @@ export default function ServiceDetail() {
   });
 
   useEffect(() => {
-    fetchService();
+    if (id) {
+      fetchService();
+    }
   }, [id]);
 
   const fetchService = async () => {
@@ -67,17 +64,18 @@ export default function ServiceDetail() {
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!service) return;
+
     try {
-      setSubmitting(true);
       const response = await fetch('/.netlify/functions/bookings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          serviceId: service?.id,
-          serviceName: service?.name,
-          serviceCategory: service?.category,
+          serviceId: service.id,
+          serviceName: service.name,
+          serviceCategory: service.category,
           ...bookingData
         })
       });
@@ -88,173 +86,254 @@ export default function ServiceDetail() {
 
       toast.success('تم إرسال طلب الحجز بنجاح');
       setShowBookingModal(false);
-      setBookingData({
-        fullName: '',
-        phoneNumber: '',
-        address: '',
-        serviceDetails: ''
-      });
     } catch (error: any) {
       toast.error(error.message);
-    } finally {
-      setSubmitting(false);
     }
   };
 
-  if (!service) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-600 mx-auto"></div>
-          <p className="mt-4 text-lg">جاري تحميل بيانات الخدمة...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-300 text-lg">جاري تحميل بيانات الخدمة...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !service) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="bg-gray-800 rounded-xl p-8 max-w-md mx-auto text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-white mb-2">عذراً</h2>
+          <p className="text-gray-300 mb-6">{error || 'لم يتم العثور على الخدمة'}</p>
+          <Link
+            to="/services"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+            العودة إلى الخدمات
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div dir="rtl">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-b from-cyan-50 to-white pt-24 pb-16">
-        <div className="container-custom">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+    <div className="min-h-screen bg-gray-900" dir="rtl">
+      {/* Header */}
+      <div className="bg-gray-800 border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-bold mb-4">{service.name}</h1>
-              <p className="text-slate-600 text-lg mb-6">{service.description}</p>
-              <div className="flex flex-wrap gap-4 text-slate-600">
-                <span className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-cyan-600"></span>
-                  {service.duration}
-                </span>
-                <span className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-cyan-600"></span>
-                  {service.availability}
-                </span>
-                <span className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-cyan-600"></span>
-                  {service.price}
-                </span>
-              </div>
+              <nav className="flex items-center gap-2 text-sm text-gray-400 mb-2">
+                <Link to="/" className="hover:text-white transition-colors">الرئيسية</Link>
+                <ChevronRight className="w-4 h-4" />
+                <Link to="/services" className="hover:text-white transition-colors">الخدمات</Link>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-white">{service.name}</span>
+              </nav>
+              <h1 className="text-3xl font-bold text-white">{service.name}</h1>
+              <p className="text-gray-400 mt-1">{service.categoryName}</p>
             </div>
-            <div className="relative">
-              <img
-                src={service.mainImage}
-                alt={service.name}
-                className="w-full h-[400px] object-cover rounded-2xl shadow-lg"
-              />
-              <div className="absolute -bottom-6 -left-6 bg-white p-4 rounded-lg shadow-lg">
-                <p className="font-bold text-xl text-cyan-600">{service.price}</p>
-                <p className="text-slate-500">السعر يبدأ من</p>
-              </div>
-            </div>
+            <button
+              onClick={() => setShowBookingModal(true)}
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold shadow-lg transition-all duration-200"
+            >
+              احجز الآن
+            </button>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Service Details */}
-      <section className="py-16">
-        <div className="container-custom">
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="md:col-span-2 space-y-12">
-              {/* Features */}
-              <div>
-                <h2 className="text-2xl font-semibold mb-6">مميزات الخدمة</h2>
-                <div className="grid sm:grid-cols-2 gap-4">
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Main Image */}
+            {service.mainImage && (
+              <div className="rounded-2xl overflow-hidden border border-gray-700">
+                <img
+                  src={service.mainImage}
+                  alt={service.name}
+                  className="w-full h-96 object-cover"
+                />
+              </div>
+            )}
+
+            {/* Description */}
+            <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+              <h2 className="text-2xl font-bold text-white mb-4">وصف الخدمة</h2>
+              <p className="text-gray-300 leading-relaxed whitespace-pre-line">
+                {service.description}
+              </p>
+            </div>
+
+            {/* Features */}
+            {service.features && service.features.length > 0 && (
+              <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                <h2 className="text-2xl font-bold text-white mb-4">مميزات الخدمة</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {service.features.map((feature, index) => (
-                    <div key={index} className="bg-white p-4 rounded-lg shadow-sm border border-slate-100">
-                      <div className="flex items-start gap-3">
-                        <span className="text-cyan-600 bg-cyan-50 p-2 rounded-lg">✓</span>
-                        <p>{feature}</p>
-                      </div>
+                    <div
+                      key={index}
+                      className="flex items-center gap-3 p-4 bg-gray-700/50 rounded-xl border border-gray-600"
+                    >
+                      <Star className="w-5 h-5 text-yellow-400" />
+                      <span className="text-gray-200">{feature}</span>
                     </div>
                   ))}
                 </div>
               </div>
+            )}
 
-              {/* Gallery */}
-              <div>
-                <h2 className="text-2xl font-semibold mb-6">معرض الصور</h2>
+            {/* Gallery */}
+            {service.detailedImages && service.detailedImages.length > 0 && (
+              <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                <h2 className="text-2xl font-bold text-white mb-4">معرض الصور</h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {service.detailedImages.map((image, index) => (
-                    <img
-                      key={index}
-                      src={image}
-                      alt={`${service.name} ${index + 1}`}
-                      className="w-full h-48 object-cover rounded-lg shadow-sm"
-                    />
+                    <div key={index} className="rounded-xl overflow-hidden border border-gray-700">
+                      <img
+                        src={image}
+                        alt={`${service.name} - ${index + 1}`}
+                        className="w-full h-48 object-cover"
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Service Info Card */}
+            <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+              <h3 className="text-xl font-bold text-white mb-4">معلومات الخدمة</h3>
+              <div className="space-y-4">
+                {service.price && (
+                  <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-xl border border-gray-600">
+                    <span className="text-gray-300">السعر</span>
+                    <span className="font-semibold text-white">{service.price}</span>
+                  </div>
+                )}
+                {service.duration && (
+                  <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-xl border border-gray-600">
+                    <span className="text-gray-300">المدة المتوقعة</span>
+                    <span className="font-semibold text-white">{service.duration}</span>
+                  </div>
+                )}
+                {service.availability && (
+                  <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-xl border border-gray-600">
+                    <span className="text-gray-300">ساعات العمل</span>
+                    <span className="font-semibold text-white">{service.availability}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Booking Form */}
-            <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-100 h-fit sticky top-24">
-              <h2 className="text-xl font-semibold mb-6">احجز الخدمة</h2>
-              <form onSubmit={handleBookingSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    الاسم بالكامل
-                  </label>
-                  <input
-                    type="text"
-                    value={bookingData.fullName}
-                    onChange={(e) => setBookingData({ ...bookingData, fullName: e.target.value })}
-                    className="form-input"
-                    required
-                  />
+            {/* Features List */}
+            <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+              <h3 className="text-xl font-bold text-white mb-4">لماذا تختارنا؟</h3>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-3 bg-gray-700/50 rounded-xl border border-gray-600">
+                  <Shield className="w-5 h-5 text-blue-400" />
+                  <span className="text-gray-300">خدمة موثوقة وآمنة</span>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    رقم الجوال
-                  </label>
-                  <input
-                    type="tel"
-                    value={bookingData.phoneNumber}
-                    onChange={(e) => setBookingData({ ...bookingData, phoneNumber: e.target.value })}
-                    className="form-input"
-                    required
-                  />
+                <div className="flex items-center gap-3 p-3 bg-gray-700/50 rounded-xl border border-gray-600">
+                  <Award className="w-5 h-5 text-yellow-400" />
+                  <span className="text-gray-300">جودة عالية</span>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    العنوان
-                  </label>
-                  <input
-                    type="text"
-                    value={bookingData.address}
-                    onChange={(e) => setBookingData({ ...bookingData, address: e.target.value })}
-                    className="form-input"
-                    required
-                  />
+                <div className="flex items-center gap-3 p-3 bg-gray-700/50 rounded-xl border border-gray-600">
+                  <Users className="w-5 h-5 text-green-400" />
+                  <span className="text-gray-300">فريق محترف</span>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    تفاصيل إضافية
-                  </label>
-                  <textarea
-                    value={bookingData.serviceDetails}
-                    onChange={(e) => setBookingData({ ...bookingData, serviceDetails: e.target.value })}
-                    className="form-textarea"
-                    rows={4}
-                  />
-                </div>
-
-                <button type="submit" className="btn-primary w-full">
-                  احجز الآن
-                </button>
-
-                <div className="text-center text-sm text-slate-500 mt-4">
-                  <p>متوفر: {service.availability}</p>
-                  <p className="mt-1">السعر يبدأ من: {service.price}</p>
-                </div>
-              </form>
+              </div>
             </div>
           </div>
         </div>
-      </section>
+      </div>
+
+      {/* Booking Modal */}
+      {showBookingModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-2xl p-6 max-w-md w-full mx-4 border border-gray-700">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">حجز الخدمة</h3>
+              <button
+                onClick={() => setShowBookingModal(false)}
+                className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <AlertCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleBookingSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  الاسم الكامل
+                </label>
+                <input
+                  type="text"
+                  value={bookingData.fullName}
+                  onChange={(e) => setBookingData({ ...bookingData, fullName: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  رقم الجوال
+                </label>
+                <input
+                  type="tel"
+                  value={bookingData.phoneNumber}
+                  onChange={(e) => setBookingData({ ...bookingData, phoneNumber: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  العنوان
+                </label>
+                <input
+                  type="text"
+                  value={bookingData.address}
+                  onChange={(e) => setBookingData({ ...bookingData, address: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  تفاصيل إضافية
+                </label>
+                <textarea
+                  value={bookingData.serviceDetails}
+                  onChange={(e) => setBookingData({ ...bookingData, serviceDetails: e.target.value })}
+                  rows={4}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold shadow-lg transition-all duration-200"
+              >
+                تأكيد الحجز
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

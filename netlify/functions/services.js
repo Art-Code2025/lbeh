@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, query, where } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 const firebaseConfig = {
@@ -58,12 +58,37 @@ export const handler = async (event, context) => {
 
   try {
     const servicesRef = collection(db, 'services');
+    const path = event.path.replace('/.netlify/functions/services', '');
+    const segments = path.split('/').filter(Boolean);
 
     switch (event.httpMethod) {
       case 'GET':
-        let servicesQuery = servicesRef;
+        // Get single service by ID
+        if (segments.length > 0) {
+          const serviceId = segments[0];
+          const serviceDoc = doc(db, 'services', serviceId);
+          const serviceSnapshot = await getDoc(serviceDoc);
+          
+          if (!serviceSnapshot.exists()) {
+            return {
+              statusCode: 404,
+              headers,
+              body: JSON.stringify({ error: 'Service not found' })
+            };
+          }
+          
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              id: serviceSnapshot.id,
+              ...serviceSnapshot.data()
+            })
+          };
+        }
         
-        // Filter by category if specified
+        // Get all services or filter by category
+        let servicesQuery = servicesRef;
         if (event.queryStringParameters?.category) {
           servicesQuery = query(servicesRef, where('category', '==', event.queryStringParameters.category));
         }
@@ -128,7 +153,16 @@ export const handler = async (event, context) => {
         };
 
       case 'PUT':
-        const { id, ...updateData } = JSON.parse(event.body);
+        if (segments.length === 0) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Service ID is required' })
+          };
+        }
+
+        const serviceId = segments[0];
+        const updateData = JSON.parse(event.body);
         
         // Handle main image update
         if (updateData.mainImage && updateData.mainImage.startsWith('data:image')) {
@@ -157,7 +191,7 @@ export const handler = async (event, context) => {
           updateData.detailedImages = updateData.detailedImages.filter(url => url);
         }
         
-        const serviceDoc = doc(db, 'services', id);
+        const serviceDoc = doc(db, 'services', serviceId);
         await updateDoc(serviceDoc, {
           ...updateData,
           updatedAt: new Date().toISOString()
@@ -170,7 +204,15 @@ export const handler = async (event, context) => {
         };
 
       case 'DELETE':
-        const deleteId = event.queryStringParameters.id;
+        if (segments.length === 0) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Service ID is required' })
+          };
+        }
+
+        const deleteId = segments[0];
         const deleteServiceDoc = doc(db, 'services', deleteId);
         await deleteDoc(deleteServiceDoc);
         
