@@ -185,7 +185,7 @@ function ServiceForm() {
       const formDataUpload = new FormData();
       formDataUpload.append('image', file);
 
-      const response = await fetch('http://localhost:3001/api/upload', {
+      const response = await fetch('/.netlify/functions/upload', {
         method: 'POST',
         body: formDataUpload
       });

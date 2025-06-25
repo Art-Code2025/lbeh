@@ -124,7 +124,7 @@ function Services() {
   const fetchServices = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/api/services');
+      const response = await fetch('/.netlify/functions/services');
       if (!response.ok) {
         throw new Error('فشل في جلب الخدمات');
       }
@@ -187,9 +187,6 @@ function Services() {
   };
 
   const getImageSrc = (image: string) => {
-    if (image.startsWith('/images/')) {
-      return `http://localhost:3001${image}`;
-    }
     return image;
   };
 

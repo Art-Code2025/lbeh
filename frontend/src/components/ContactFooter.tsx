@@ -38,23 +38,27 @@ const ContactFooter: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const [servicesResponse, categoriesResponse] = await Promise.all([
-        fetch('http://localhost:3001/api/services'),
-        fetch('http://localhost:3001/api/categories')
+      const [servicesRes, categoriesRes] = await Promise.all([
+        fetch('/.netlify/functions/services'),
+        fetch('/.netlify/functions/categories')
       ]);
 
-      if (servicesResponse.ok && categoriesResponse.ok) {
-        const services = await servicesResponse.json();
-        const categories = await categoriesResponse.json();
-        
-        setStats(prev => ({
-          ...prev,
-          services: services.length,
-          categories: categories.length
-        }));
+      if (!servicesRes.ok || !categoriesRes.ok) {
+        throw new Error('فشل في جلب البيانات');
       }
+
+      const [services, categories] = await Promise.all([
+        servicesRes.json(),
+        categoriesRes.json()
+      ]);
+
+      setStats(prev => ({
+        ...prev,
+        services: services.length,
+        categories: categories.length
+      }));
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error('Error fetching data:', error);
     }
   };
 

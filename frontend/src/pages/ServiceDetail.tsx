@@ -32,50 +32,72 @@ export default function ServiceDetail() {
     address: '',
     serviceDetails: ''
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [bookingData, setBookingData] = useState<BookingFormData>({
+    fullName: '',
+    phoneNumber: '',
+    address: '',
+    serviceDetails: ''
+  });
 
   useEffect(() => {
-    fetchServiceDetails();
+    fetchService();
   }, [id]);
 
-  const fetchServiceDetails = async () => {
+  const fetchService = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/services/${id}`);
-      if (!response.ok) throw new Error('فشل في تحميل بيانات الخدمة');
+      setLoading(true);
+      const response = await fetch(`/.netlify/functions/services/${id}`);
+      if (!response.ok) {
+        throw new Error('فشل في جلب بيانات الخدمة');
+      }
       const data = await response.json();
       setService(data);
-    } catch (error) {
-      toast.error('حدث خطأ في تحميل بيانات الخدمة');
+    } catch (error: any) {
+      setError(error.message);
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!service) return;
-
+    
     try {
-      const response = await fetch('http://localhost:3001/api/bookings', {
+      setSubmitting(true);
+      const response = await fetch('/.netlify/functions/bookings', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          serviceId: service.id,
-          serviceName: service.name,
-          ...formData
-        }),
+          serviceId: service?.id,
+          serviceName: service?.name,
+          serviceCategory: service?.category,
+          ...bookingData
+        })
       });
 
-      if (!response.ok) throw new Error('فشل في إرسال طلب الحجز');
+      if (!response.ok) {
+        throw new Error('فشل في إرسال الحجز');
+      }
 
       toast.success('تم إرسال طلب الحجز بنجاح');
-      setFormData({
+      setShowBookingModal(false);
+      setBookingData({
         fullName: '',
         phoneNumber: '',
         address: '',
         serviceDetails: ''
       });
-    } catch (error) {
-      toast.error('حدث خطأ في إرسال طلب الحجز');
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -175,8 +197,8 @@ export default function ServiceDetail() {
                   </label>
                   <input
                     type="text"
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                    value={bookingData.fullName}
+                    onChange={(e) => setBookingData({ ...bookingData, fullName: e.target.value })}
                     className="form-input"
                     required
                   />
@@ -188,8 +210,8 @@ export default function ServiceDetail() {
                   </label>
                   <input
                     type="tel"
-                    value={formData.phoneNumber}
-                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                    value={bookingData.phoneNumber}
+                    onChange={(e) => setBookingData({ ...bookingData, phoneNumber: e.target.value })}
                     className="form-input"
                     required
                   />
@@ -201,8 +223,8 @@ export default function ServiceDetail() {
                   </label>
                   <input
                     type="text"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    value={bookingData.address}
+                    onChange={(e) => setBookingData({ ...bookingData, address: e.target.value })}
                     className="form-input"
                     required
                   />
@@ -213,8 +235,8 @@ export default function ServiceDetail() {
                     تفاصيل إضافية
                   </label>
                   <textarea
-                    value={formData.serviceDetails}
-                    onChange={(e) => setFormData({ ...formData, serviceDetails: e.target.value })}
+                    value={bookingData.serviceDetails}
+                    onChange={(e) => setBookingData({ ...bookingData, serviceDetails: e.target.value })}
                     className="form-textarea"
                     rows={4}
                   />

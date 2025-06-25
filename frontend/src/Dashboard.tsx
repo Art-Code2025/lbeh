@@ -422,7 +422,10 @@ function Dashboard() {
       
       const response = await fetch(url, {
         method,
-        body: serviceData
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(serviceData)
       });
 
       if (!response.ok) {

@@ -85,15 +85,15 @@ const BookService: React.FC = () => {
   const fetchService = async (serviceId: number) => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3001/api/services/${serviceId}`);
+      const response = await fetch(`/.netlify/functions/services/${serviceId}`);
       if (!response.ok) {
-        throw new Error('فشل في جلب تفاصيل الخدمة');
+        throw new Error('فشل في جلب بيانات الخدمة');
       }
       const data = await response.json();
       setService(data);
     } catch (error: any) {
-      setError(error.message || 'حدث خطأ أثناء جلب تفاصيل الخدمة');
-      toast.error(error.message || 'حدث خطأ أثناء جلب تفاصيل الخدمة');
+      setError(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -163,49 +163,35 @@ const BookService: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateStep(3)) {
-      toast.error('يرجى تصحيح الأخطاء في النموذج');
-      return;
-    }
-
     try {
       setSubmitting(true);
-      
-      const bookingData = {
-        serviceId: service!.id,
-        serviceName: service!.name,
-        serviceCategory: service!.category,
-        ...formData,
-        status: 'pending' as const
-      };
-
-      const response = await fetch('http://localhost:3001/api/bookings', {
+      const response = await fetch('/.netlify/functions/bookings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(bookingData)
+        body: JSON.stringify({
+          serviceId: service?.id,
+          serviceName: service?.name,
+          serviceCategory: service?.category,
+          ...formData
+        })
       });
 
       if (!response.ok) {
-        throw new Error('فشل في إرسال طلب الحجز');
+        throw new Error('فشل في إرسال الحجز');
       }
 
-      const result = await response.json();
-      setCurrentStep(4);
-      toast.success('تم إرسال طلب الحجز بنجاح! سنتواصل معك قريباً');
-      
+      toast.success('تم إرسال طلب الحجز بنجاح');
+      navigate('/');
     } catch (error: any) {
-      toast.error(error.message || 'حدث خطأ أثناء إرسال طلب الحجز');
+      toast.error(error.message);
     } finally {
       setSubmitting(false);
     }
   };
 
   const getImageSrc = (image: string) => {
-    if (image.startsWith('/images/')) {
-      return `http://localhost:3001${image}`;
-    }
     return image;
   };
 
