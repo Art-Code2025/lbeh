@@ -117,7 +117,7 @@ function ServiceForm() {
   const fetchService = async (serviceId: number) => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3001/api/services/${serviceId}`);
+      const response = await fetch(`/.netlify/functions/services/${serviceId}`);
       if (!response.ok) {
         throw new Error('فشل في جلب بيانات الخدمة');
       }
@@ -270,8 +270,8 @@ function ServiceForm() {
       const dataToSubmit = { ...formData, features: cleanedFeatures };
 
       const url = isEditing 
-        ? `http://localhost:3001/api/services/${id}`
-        : 'http://localhost:3001/api/services';
+        ? `/.netlify/functions/services/${id}`
+        : '/.netlify/functions/services';
       
       const method = isEditing ? 'PUT' : 'POST';
 
@@ -303,7 +303,7 @@ function ServiceForm() {
   };
 
   const getImageSrc = (image: string) => {
-    return image.startsWith('/images/') ? `http://localhost:3001${image}` : image;
+    return image;
   };
 
   if (loading) {

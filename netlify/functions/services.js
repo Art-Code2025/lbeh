@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
+import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY || "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
@@ -12,6 +13,30 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
+
+// Helper function to upload image to Firebase Storage
+async function uploadImageToStorage(base64Image, path) {
+  if (!base64Image) return null;
+  
+  try {
+    // Remove data URL prefix if present
+    const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
+    
+    // Create a reference to the storage location
+    const imageRef = ref(storage, `services/${path}`);
+    
+    // Upload the image
+    await uploadString(imageRef, base64Data, 'base64');
+    
+    // Get the download URL
+    const downloadURL = await getDownloadURL(imageRef);
+    return downloadURL;
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    return null;
+  }
+}
 
 export const handler = async (event, context) => {
   // Enable CORS
@@ -61,17 +86,31 @@ export const handler = async (event, context) => {
       case 'POST':
         const newService = JSON.parse(event.body);
         
-        // Handle Cloudinary image upload
-        if (newService.imageFile) {
-          try {
-            const cloudinaryUrl = await uploadToCloudinary(newService.imageFile);
-            newService.mainImage = cloudinaryUrl;
-            delete newService.imageFile;
-          } catch (uploadError) {
-            console.error('Cloudinary upload error:', uploadError);
-            // Continue without image if upload fails
-            delete newService.imageFile;
+        // Handle main image upload
+        if (newService.mainImage && newService.mainImage.startsWith('data:image')) {
+          const mainImageUrl = await uploadImageToStorage(
+            newService.mainImage,
+            `${Date.now()}-main.jpg`
+          );
+          if (mainImageUrl) {
+            newService.mainImage = mainImageUrl;
           }
+        }
+        
+        // Handle detailed images upload
+        if (Array.isArray(newService.detailedImages)) {
+          const uploadPromises = newService.detailedImages.map(async (image, index) => {
+            if (image && image.startsWith('data:image')) {
+              return await uploadImageToStorage(
+                image,
+                `${Date.now()}-detail-${index}.jpg`
+              );
+            }
+            return image;
+          });
+          
+          newService.detailedImages = await Promise.all(uploadPromises);
+          newService.detailedImages = newService.detailedImages.filter(url => url);
         }
         
         const docRef = await addDoc(servicesRef, {
@@ -91,17 +130,31 @@ export const handler = async (event, context) => {
       case 'PUT':
         const { id, ...updateData } = JSON.parse(event.body);
         
-        // Handle Cloudinary image upload for updates
-        if (updateData.imageFile) {
-          try {
-            const cloudinaryUrl = await uploadToCloudinary(updateData.imageFile);
-            updateData.mainImage = cloudinaryUrl;
-            delete updateData.imageFile;
-          } catch (uploadError) {
-            console.error('Cloudinary upload error:', uploadError);
-            // Continue without image update if upload fails
-            delete updateData.imageFile;
+        // Handle main image update
+        if (updateData.mainImage && updateData.mainImage.startsWith('data:image')) {
+          const mainImageUrl = await uploadImageToStorage(
+            updateData.mainImage,
+            `${Date.now()}-main.jpg`
+          );
+          if (mainImageUrl) {
+            updateData.mainImage = mainImageUrl;
           }
+        }
+        
+        // Handle detailed images update
+        if (Array.isArray(updateData.detailedImages)) {
+          const uploadPromises = updateData.detailedImages.map(async (image, index) => {
+            if (image && image.startsWith('data:image')) {
+              return await uploadImageToStorage(
+                image,
+                `${Date.now()}-detail-${index}.jpg`
+              );
+            }
+            return image;
+          });
+          
+          updateData.detailedImages = await Promise.all(uploadPromises);
+          updateData.detailedImages = updateData.detailedImages.filter(url => url);
         }
         
         const serviceDoc = doc(db, 'services', id);
@@ -145,41 +198,4 @@ export const handler = async (event, context) => {
       })
     };
   }
-};
-
-// Cloudinary upload function
-async function uploadToCloudinary(imageBase64) {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || "lbeh";
-  const apiKey = process.env.CLOUDINARY_API_KEY || "357275813752554";
-  const apiSecret = process.env.CLOUDINARY_API_SECRET || "50gxhCM1Yidpw21FPVm81SyjomM";
-  
-  const timestamp = Math.round(new Date().getTime() / 1000);
-  const signature = await generateSignature(timestamp, apiSecret);
-  
-  const formData = new FormData();
-  formData.append('file', imageBase64);
-  formData.append('api_key', apiKey);
-  formData.append('timestamp', timestamp);
-  formData.append('signature', signature);
-  formData.append('folder', 'labeeh-services');
-  
-  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-    method: 'POST',
-    body: formData
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Cloudinary upload failed: ${response.status}`);
-  }
-  
-  const result = await response.json();
-  return result.secure_url;
-}
-
-// Generate Cloudinary signature
-async function generateSignature(timestamp, apiSecret) {
-  // For Node.js environment in Netlify Functions
-  const crypto = await import('crypto');
-  const params = `folder=labeeh-services&timestamp=${timestamp}`;
-  return crypto.createHash('sha1').update(params + apiSecret).digest('hex');
-} 
+}; 

@@ -334,7 +334,7 @@ const Home: React.FC = () => {
                     {service.mainImage && (
                       <div className="mb-4 overflow-hidden rounded-lg">
                         <img
-                          src={`http://localhost:3001${service.mainImage}`}
+                          src={service.mainImage}
                           alt={service.name}
                           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                           loading="lazy"

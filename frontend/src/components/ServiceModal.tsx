@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 interface ServiceModalProps {
   isOpen: boolean;
@@ -51,26 +52,37 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     }));
   };
 
-  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setMainImageFile(e.target.files[0]);
-      setFormData(prev => ({
-        ...prev,
-        mainImage: URL.createObjectURL(e.target.files[0])
-      }));
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({
+          ...prev,
+          mainImage: reader.result as string
+        }));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  const handleDetailedImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDetailedImagesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      setDetailedImageFiles(prev => [...prev, ...newFiles]);
+      const files = Array.from(e.target.files);
+      const imagePromises = files.map(file => {
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            resolve(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
+      const base64Images = await Promise.all(imagePromises);
       setFormData(prev => ({
         ...prev,
-        detailedImages: [
-          ...prev.detailedImages,
-          ...newFiles.map(file => URL.createObjectURL(file))
-        ]
+        detailedImages: [...prev.detailedImages, ...base64Images]
       }));
     }
   };
@@ -95,25 +107,30 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const formDataToSend = new FormData();
-    Object.entries(formData).forEach(([key, value]) => {
-      if (Array.isArray(value)) {
-        formDataToSend.append(key, JSON.stringify(value));
-      } else {
-        formDataToSend.append(key, value);
-      }
-    });
-
-    if (mainImageFile) {
-      formDataToSend.append('mainImage', mainImageFile);
+    if (!formData.name || !formData.category) {
+      toast.error('يرجى ملء جميع الحقون المطلوبة');
+      return;
     }
 
-    detailedImageFiles.forEach(file => {
-      formDataToSend.append('detailedImages', file);
-    });
+    try {
+      const response = await fetch('/.netlify/functions/services', {
+        method: editingService ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editingService ? { id: editingService.id, ...formData } : formData)
+      });
 
-    onSave(formDataToSend);
-    onClose();
+      if (!response.ok) {
+        throw new Error('فشل في حفظ الخدمة');
+      }
+
+      toast.success(editingService ? 'تم تحديث الخدمة بنجاح' : 'تم إضافة الخدمة بنجاح');
+      onSave(formData);
+      onClose();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
   };
 
   if (!isOpen) return null;

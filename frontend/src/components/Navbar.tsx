@@ -13,7 +13,7 @@ const Navbar: React.FC = () => {
 
   const fetchServicesCount = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/services');
+      const response = await fetch('/.netlify/functions/services');
       if (response.ok) {
         const services = await response.json();
         setServicesCount(services.length);

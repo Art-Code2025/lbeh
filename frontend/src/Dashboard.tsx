@@ -171,10 +171,10 @@ function Dashboard() {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/services');
-        if (!response.ok) {
-          throw new Error('فشل في جلب الخدمات');
-        }
+      const response = await fetch('/.netlify/functions/services');
+      if (!response.ok) {
+        throw new Error('فشل في جلب الخدمات');
+      }
       const data = await response.json();
       setServices(data);
     } catch (error: any) {
@@ -185,7 +185,7 @@ function Dashboard() {
 
   const fetchBookings = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/bookings');
+      const response = await fetch('/.netlify/functions/bookings');
       if (!response.ok) {
         throw new Error('فشل في جلب الحجوزات');
       }
@@ -198,7 +198,7 @@ function Dashboard() {
 
   const fetchBookingStats = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/bookings/stats');
+      const response = await fetch('/.netlify/functions/bookings/stats');
       if (!response.ok) {
         throw new Error('فشل في جلب إحصائيات الحجوزات');
       }
@@ -212,68 +212,51 @@ function Dashboard() {
   };
 
   const handleServiceDelete = async (id: number) => {
-    if (window.confirm('هل أنت متأكد من حذف هذه الخدمة؟')) {
-      try {
-        const response = await fetch(`http://localhost:3001/api/services/${id}`, {
-          method: 'DELETE'
-        });
-
-        if (response.ok) {
-          setServices(services.filter(service => service.id !== id));
-          toast.success('تم حذف الخدمة بنجاح');
-        } else {
-          toast.error('فشل في حذف الخدمة');
-        }
-      } catch (error) {
-        toast.error('حدث خطأ أثناء حذف الخدمة');
+    try {
+      const response = await fetch(`/.netlify/functions/services?id=${id}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) {
+        throw new Error('فشل في حذف الخدمة');
       }
+      toast.success('تم حذف الخدمة بنجاح');
+      fetchServices();
+    } catch (error: any) {
+      toast.error(error.message);
     }
   };
 
   const handleBookingStatusUpdate = async (bookingId: number, newStatus: Booking['status']) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/bookings/${bookingId}/status`, {
+      const response = await fetch(`/.netlify/functions/bookings/${bookingId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ status: newStatus })
       });
-
       if (!response.ok) {
         throw new Error('فشل في تحديث حالة الحجز');
       }
-
-      setBookings(bookings.map(booking => 
-        booking.id === bookingId 
-          ? { ...booking, status: newStatus, updatedAt: new Date().toISOString() }
-          : booking
-      ));
-      
-      fetchBookingStats();
       toast.success('تم تحديث حالة الحجز بنجاح');
+      fetchBookings();
     } catch (error: any) {
       toast.error(error.message);
     }
   };
 
   const handleBookingDelete = async (bookingId: number) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا الحجز؟')) {
-      try {
-        const response = await fetch(`http://localhost:3001/api/bookings/${bookingId}`, {
-          method: 'DELETE'
-        });
-
-        if (response.ok) {
-          setBookings(bookings.filter(booking => booking.id !== bookingId));
-          fetchBookingStats();
-          toast.success('تم حذف الحجز بنجاح');
-        } else {
-          toast.error('فشل في حذف الحجز');
-        }
-      } catch (error) {
-        toast.error('حدث خطأ أثناء حذف الحجز');
+    try {
+      const response = await fetch(`/.netlify/functions/bookings/${bookingId}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) {
+        throw new Error('فشل في حذف الحجز');
       }
+      toast.success('تم حذف الحجز بنجاح');
+      fetchBookings();
+    } catch (error: any) {
+      toast.error(error.message);
     }
   };
 
@@ -307,7 +290,7 @@ function Dashboard() {
   };
 
   const getImageSrc = (image: string) => {
-    return image.startsWith('/images/') ? `http://localhost:3001${image}` : image;
+    return image;
   };
 
   const getStatusColor = (status: Booking['status']) => {
@@ -432,8 +415,8 @@ function Dashboard() {
   const handleServiceSave = async (serviceData: FormData) => {
     try {
       const url = editingService
-        ? `http://localhost:3001/api/services/${editingService.id}`
-        : 'http://localhost:3001/api/services';
+        ? `/.netlify/functions/services/${editingService.id}`
+        : '/.netlify/functions/services';
       
       const method = editingService ? 'PUT' : 'POST';
       
