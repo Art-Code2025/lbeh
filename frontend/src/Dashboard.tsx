@@ -235,8 +235,11 @@ function Dashboard() {
   };
 
   const handleServiceDelete = async (id: number) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذه الخدمة؟ سيتم حذف جميع الحجوزات المتعلقة بها أيضاً.')) {
+      return;
+    }
     try {
-      const response = await fetch(`/.netlify/functions/services?id=${id}`, {
+      const response = await fetch(`/.netlify/functions/services/${id}`, {
         method: 'DELETE'
       });
       if (!response.ok) {
@@ -435,7 +438,7 @@ function Dashboard() {
     }
   };
 
-  const handleServiceSave = async (serviceData: FormData) => {
+  const handleServiceSave = async (serviceData: Service) => {
     try {
       const url = editingService
         ? `/.netlify/functions/services/${editingService.id}`

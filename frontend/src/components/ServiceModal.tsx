@@ -104,33 +104,14 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!formData.name || !formData.category) {
-      toast.error('يرجى ملء جميع الحقون المطلوبة');
+      toast.error('يرجى ملء جميع الحقول المطلوبة');
       return;
     }
-
-    try {
-      const response = await fetch('/.netlify/functions/services', {
-        method: editingService ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(editingService ? { id: editingService.id, ...formData } : formData)
-      });
-
-      if (!response.ok) {
-        throw new Error('فشل في حفظ الخدمة');
-      }
-
-      toast.success(editingService ? 'تم تحديث الخدمة بنجاح' : 'تم إضافة الخدمة بنجاح');
-      onSave(formData);
-      onClose();
-    } catch (error: any) {
-      toast.error(error.message);
-    }
+    onSave(formData);
+    onClose();
   };
 
   if (!isOpen) return null;
