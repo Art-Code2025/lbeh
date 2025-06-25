@@ -9,13 +9,15 @@
     "dev": "concurrently \"node server.js\" \"cd frontend && npm run dev\"",
     "dev:netlify": "netlify dev",
     "start:netlify": "./run-netlify.sh",
-    "build": "cd frontend && npm ci && npm run build",
+    "prebuild": "cd frontend && npm ci",
+    "build": "cd frontend && npm run build",
+    "build:debug": "cd frontend && NODE_ENV=development npm run build",
     "preview": "cd frontend && npm run preview",
     "install-all": "npm install && cd frontend && npm install",
     "clean": "rm -rf node_modules frontend/node_modules frontend/dist",
     "setup": "npm run install-all && npm run build",
     "netlify:dev": "netlify dev",
-    "netlify:build": "cd frontend && npm run build",
+    "netlify:build": "npm run prebuild && npm run build:debug",
     "migrate:firebase": "node migrate-to-firebase.js"
   },
   "keywords": [
