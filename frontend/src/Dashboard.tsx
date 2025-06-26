@@ -793,49 +793,77 @@ function Dashboard() {
 
   const handleServiceSave = async (serviceData: Service) => {
     try {
+      console.log('💾 Saving service with Cloudinary images:', {
+        name: serviceData.name,
+        mainImage: serviceData.mainImage ? 'Present' : 'Not present',
+        isCloudinaryMainImage: serviceData.mainImage?.includes('cloudinary.com') || false,
+        detailedImagesCount: serviceData.detailedImages?.length || 0,
+        cloudinaryDetailedImages: serviceData.detailedImages?.filter(img => img.includes('cloudinary.com')).length || 0,
+        imageDetailsCount: serviceData.imageDetails?.length || 0,
+        features: serviceData.features?.length || 0
+      });
+
+      // التأكد من أن الصور من Cloudinary
+      const mainImageUrl = serviceData.mainImage || '';
+      const detailedImagesUrls = serviceData.detailedImages || [];
+      
+      if (mainImageUrl && !mainImageUrl.includes('cloudinary.com') && !mainImageUrl.startsWith('data:')) {
+        console.warn('⚠️ Main image is not from Cloudinary:', mainImageUrl);
+      }
+
+      detailedImagesUrls.forEach((img, index) => {
+        if (!img.includes('cloudinary.com') && !img.startsWith('data:')) {
+          console.warn(`⚠️ Detailed image ${index + 1} is not from Cloudinary:`, img);
+        }
+      });
+
+      const serviceToSave = {
+        name: serviceData.name,
+        categoryId: serviceData.category, // Use categoryId for new structure
+        category: serviceData.category, // Keep for backward compatibility
+        categoryName: serviceData.categoryName,
+        homeShortDescription: serviceData.homeShortDescription,
+        detailsShortDescription: serviceData.detailsShortDescription || serviceData.homeShortDescription,
+        description: serviceData.description || serviceData.homeShortDescription,
+        mainImage: mainImageUrl,
+        detailedImages: detailedImagesUrls,
+        imageDetails: serviceData.imageDetails || [],
+        features: serviceData.features || [],
+        price: serviceData.price || '',
+        duration: serviceData.duration || '',
+        availability: serviceData.availability || '',
+        // إضافة معلومات Cloudinary
+        cloudinaryInfo: {
+          mainImageSource: mainImageUrl ? (mainImageUrl.includes('cloudinary.com') ? 'cloudinary' : 'other') : 'none',
+          detailedImagesSource: detailedImagesUrls.map(img => img.includes('cloudinary.com') ? 'cloudinary' : 'other'),
+          uploadedAt: new Date().toISOString()
+        }
+      };
+
       if (editingService && editingService.id) {
         // Update existing service - use Firebase document ID
-        console.log('Updating service with Firebase ID:', editingService.id);
+        console.log('🔄 Updating service with Firebase ID:', editingService.id);
         await updateDoc(doc(db, 'services', editingService.id), {
-          name: serviceData.name,
-          categoryId: serviceData.category, // Use categoryId for new structure
-          category: serviceData.category, // Keep for backward compatibility
-          categoryName: serviceData.categoryName,
-          homeShortDescription: serviceData.homeShortDescription,
-          description: serviceData.description || serviceData.homeShortDescription,
-          mainImage: serviceData.mainImage,
-          price: serviceData.price,
-          duration: serviceData.duration,
-          availability: serviceData.availability,
-          features: serviceData.features || [],
+          ...serviceToSave,
           updatedAt: new Date().toISOString()
         });
-        toast.success('تم تحديث الخدمة بنجاح');
+        console.log('✅ Service updated successfully with Cloudinary images');
+        toast.success('تم تحديث الخدمة بنجاح مع الصور من Cloudinary');
       } else {
         // Add new service - let Firebase generate the ID
-        const serviceToAdd = {
-          name: serviceData.name,
-          categoryId: serviceData.category, // Use categoryId for new structure
-          category: serviceData.category, // Keep for backward compatibility
-          categoryName: serviceData.categoryName,
-          homeShortDescription: serviceData.homeShortDescription,
-          description: serviceData.description || serviceData.homeShortDescription,
-          mainImage: serviceData.mainImage,
-          price: serviceData.price,
-          duration: serviceData.duration,
-          availability: serviceData.availability,
-          features: serviceData.features || [],
+        const docRef = await addDoc(collection(db, 'services'), {
+          ...serviceToSave,
           createdAt: new Date().toISOString()
-        };
-        const docRef = await addDoc(collection(db, 'services'), serviceToAdd);
-        console.log('New service added with Firebase ID:', docRef.id);
-        toast.success('تم إضافة الخدمة بنجاح');
+        });
+        console.log('✅ New service added with Firebase ID:', docRef.id);
+        toast.success('تم إضافة الخدمة بنجاح مع الصور من Cloudinary');
       }
+      
       setShowServiceModal(false);
       setEditingService(null);
       await fetchServices();
     } catch (error: any) {
-      console.error('Error saving service:', error);
+      console.error('❌ Error saving service:', error);
       toast.error(`فشل في حفظ الخدمة: ${error?.message || 'خطأ غير معروف'}`);
     }
   };

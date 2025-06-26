@@ -375,21 +375,21 @@ const Home: React.FC = () => {
       </section>
 
       {/* Popular Services Section */}
-      <section className="py-20 bg-gray-800">
+      <section className="py-20 bg-gradient-to-b from-[#f0faff] to-[#e0f2fe]">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">خدماتنا الشائعة</h2>
-            <p className="text-xl text-gray-300">أشهر الخدمات المطلوبة من عملائنا الكرام</p>
+            <h2 className="text-4xl font-bold text-slate-800 mb-4">خدماتنا الشائعة</h2>
+            <p className="text-xl text-slate-600">أشهر الخدمات المطلوبة من عملائنا الكرام</p>
           </div>
 
           {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
-              <p className="text-gray-300 text-lg">جاري تحميل الخدمات...</p>
+              <p className="text-slate-600 text-lg">جاري تحميل الخدمات...</p>
             </div>
           ) : error ? (
             <div className="text-center py-12">
-              <p className="text-red-400 text-lg mb-4">⚠️ {error}</p>
+              <p className="text-red-600 text-lg mb-4">⚠️ {error}</p>
               <button 
                 onClick={() => window.location.reload()}
                 className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
@@ -399,7 +399,7 @@ const Home: React.FC = () => {
             </div>
           ) : getPopularServices().length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-400 text-lg mb-4">لا توجد خدمات متاحة حالياً</p>
+              <p className="text-slate-500 text-lg mb-4">لا توجد خدمات متاحة حالياً</p>
               <Link 
                 to="/dashboard"
                 className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors inline-block"
@@ -410,8 +410,8 @@ const Home: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {getPopularServices().map((service) => (
-                <div key={service.id} className="bg-gray-700 rounded-2xl p-6 hover:bg-gray-600 transition-all duration-300 group">
-                  <div className="relative h-48 mb-6 rounded-xl overflow-hidden bg-gray-600">
+                <div key={service.id} className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 group border border-cyan-100/50 hover:-translate-y-1">
+                  <div className="relative h-48 mb-6 rounded-xl overflow-hidden bg-gray-100">
                     {service.mainImage ? (
                       <img
                         src={service.mainImage}
@@ -419,7 +419,7 @@ const Home: React.FC = () => {
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-cyan-100 to-blue-100">
                         <div className="text-4xl">
                           {service.category === 'internal_delivery' && '🚚'}
                           {service.category === 'external_trips' && '🗺️'}
@@ -430,15 +430,15 @@ const Home: React.FC = () => {
                     )}
                   </div>
                   
-                  <h3 className="text-xl font-bold text-white mb-3">{service.name}</h3>
-                  <p className="text-gray-300 mb-4 line-clamp-2">{service.homeShortDescription}</p>
+                  <h3 className="text-xl font-bold text-slate-800 mb-3">{service.name}</h3>
+                  <p className="text-slate-600 mb-4 line-clamp-2">{service.homeShortDescription}</p>
                   
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-medium text-blue-400 bg-blue-500/20 px-3 py-1 rounded-full">
+                    <span className="text-sm font-medium text-cyan-700 bg-cyan-100 px-3 py-1 rounded-full">
                       {service.categoryName}
                     </span>
                     {service.price && (
-                      <span className="text-yellow-400 font-bold">
+                      <span className="text-amber-600 font-bold">
                         {service.price}
                       </span>
                     )}

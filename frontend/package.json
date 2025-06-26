@@ -10,10 +10,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-beautiful-dnd": "^13.1.8",
+    "@types/react-dom": "^18.2.17",
+    "@types/react-slick": "^0.23.13",
     "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
     "chart.js": "^4.4.0",
+    "cloudinary": "^2.7.0",
     "firebase": "^11.9.1",
     "lucide-react": "^0.441.0",
+    "postcss": "^8.4.32",
     "react": "^18.2.0",
     "react-beautiful-dnd": "^13.1.1",
     "react-chartjs-2": "^5.2.0",
@@ -23,15 +30,9 @@
     "react-slick": "^0.30.2",
     "react-toastify": "^10.0.5",
     "slick-carousel": "^1.8.1",
-    "@types/react": "^18.2.43",
-    "@types/react-beautiful-dnd": "^13.1.8",
-    "@types/react-dom": "^18.2.17",
-    "@types/react-slick": "^0.23.13",
+    "tailwindcss": "^3.3.6",
     "typescript": "^5.2.2",
-    "vite": "^5.0.8",
-    "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.32",
-    "tailwindcss": "^3.3.6"
+    "vite": "^5.0.8"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.14.0",

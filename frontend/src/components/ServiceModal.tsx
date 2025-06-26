@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Plus, Trash2 } from 'lucide-react';
+import { X, Upload, Plus, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { uploadImageToCloudinary, uploadMultipleImagesToCloudinary } from '../services/cloudinary';
 
 interface ServiceModalProps {
   isOpen: boolean;
@@ -34,8 +35,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   });
 
   const [newFeature, setNewFeature] = useState('');
-  const [mainImageFile, setMainImageFile] = useState<File | null>(null);
-  const [detailedImageFiles, setDetailedImageFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadingDetailed, setUploadingDetailed] = useState(false);
 
   useEffect(() => {
     if (editingService) {
@@ -87,30 +88,22 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت');
-        return;
+      setUploading(true);
+      try {
+        const imageUrl = await uploadImageToCloudinary(file);
+        if (imageUrl) {
+          setFormData(prev => ({
+            ...prev,
+            mainImage: imageUrl
+          }));
+          toast.success('تم رفع الصورة الرئيسية بنجاح إلى Cloudinary');
+        }
+      } catch (error) {
+        console.error('Error uploading main image:', error);
+        toast.error('فشل في رفع الصورة الرئيسية');
+      } finally {
+        setUploading(false);
       }
-      
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        toast.error('يرجى اختيار ملف صورة صالح');
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({
-          ...prev,
-          mainImage: reader.result as string
-        }));
-        toast.success('تم تحميل الصورة الرئيسية بنجاح');
-      };
-      reader.onerror = () => {
-        toast.error('فشل في تحميل الصورة');
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -118,49 +111,27 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     if (e.target.files) {
       const files = Array.from(e.target.files);
       
-      // Validate total number of images
+      // التحقق من العدد الإجمالي
       if (formData.detailedImages.length + files.length > 10) {
         toast.error('يمكن إضافة 10 صور تفصيلية كحد أقصى');
         return;
       }
       
-      const validFiles = files.filter(file => {
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error(`الصورة ${file.name} كبيرة جداً (الحد الأقصى 5 ميجابايت)`);
-          return false;
-        }
-        if (!file.type.startsWith('image/')) {
-          toast.error(`الملف ${file.name} ليس صورة صالحة`);
-          return false;
-        }
-        return true;
-      });
-      
-      if (validFiles.length === 0) return;
-      
-      const imagePromises = validFiles.map(file => {
-        return new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            resolve(reader.result as string);
-          };
-          reader.onerror = () => {
-            reject(new Error(`فشل في تحميل ${file.name}`));
-          };
-          reader.readAsDataURL(file);
-        });
-      });
-
+      setUploadingDetailed(true);
       try {
-        const base64Images = await Promise.all(imagePromises);
-        setFormData(prev => ({
-          ...prev,
-          detailedImages: [...prev.detailedImages, ...base64Images]
-        }));
-        toast.success(`تم تحميل ${base64Images.length} صورة بنجاح`);
+        const imageUrls = await uploadMultipleImagesToCloudinary(files);
+        if (imageUrls.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            detailedImages: [...prev.detailedImages, ...imageUrls]
+          }));
+          toast.success(`تم رفع ${imageUrls.length} صورة تفصيلية بنجاح إلى Cloudinary`);
+        }
       } catch (error) {
-        console.error('Error processing images:', error);
-        toast.error('فشل في تحميل بعض الصور');
+        console.error('Error uploading detailed images:', error);
+        toast.error('فشل في رفع الصور التفصيلية');
+      } finally {
+        setUploadingDetailed(false);
       }
     }
   };
@@ -198,7 +169,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       return;
     }
     
-    // Ensure images are included in the save data
+    // التأكد من أن الصور محفوظة في Cloudinary
     const serviceData = {
       ...formData,
       mainImage: formData.mainImage || '',
@@ -206,9 +177,10 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       imageDetails: formData.imageDetails || []
     };
     
-    console.log('Saving service with images:', {
-      mainImage: serviceData.mainImage ? 'Present' : 'Not present',
-      detailedImagesCount: serviceData.detailedImages.length
+    console.log('💾 Saving service with Cloudinary images:', {
+      mainImage: serviceData.mainImage ? 'Cloudinary URL present' : 'No main image',
+      detailedImagesCount: serviceData.detailedImages.length,
+      cloudinaryUrls: serviceData.detailedImages.some(img => img.includes('cloudinary.com'))
     });
     
     onSave(serviceData);
@@ -362,15 +334,29 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                     onChange={handleMainImageChange}
                     className="hidden"
                     id="mainImage"
+                    disabled={uploading}
                   />
                   <label
                     htmlFor="mainImage"
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg cursor-pointer transition-colors"
+                    className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg cursor-pointer transition-colors ${
+                      uploading 
+                        ? 'bg-gray-500 cursor-not-allowed' 
+                        : 'bg-blue-500 hover:bg-blue-600'
+                    }`}
                   >
-                    <Upload className="w-4 h-4" />
-                    اختر صورة رئيسية
+                    {uploading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        جاري الرفع...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        اختر صورة رئيسية
+                      </>
+                    )}
                   </label>
-                  <span className="text-sm text-gray-400">الحد الأقصى: 5 ميجابايت</span>
+                  <span className="text-sm text-gray-400">يتم الرفع إلى Cloudinary - الحد الأقصى: 10 ميجابايت</span>
                 </div>
                 {formData.mainImage && (
                   <div className="relative inline-block">
@@ -383,9 +369,15 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                       type="button"
                       onClick={() => setFormData(prev => ({ ...prev, mainImage: '' }))}
                       className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      disabled={uploading}
                     >
                       <X className="w-4 h-4" />
                     </button>
+                    {formData.mainImage.includes('cloudinary.com') && (
+                      <div className="absolute -bottom-2 -left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                        ☁️ Cloudinary
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -404,16 +396,30 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                     onChange={handleDetailedImagesChange}
                     className="hidden"
                     id="detailedImages"
+                    disabled={uploadingDetailed}
                   />
                   <label
                     htmlFor="detailedImages"
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg cursor-pointer transition-colors"
+                    className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg cursor-pointer transition-colors ${
+                      uploadingDetailed 
+                        ? 'bg-gray-500 cursor-not-allowed' 
+                        : 'bg-gray-600 hover:bg-gray-500'
+                    }`}
                   >
-                    <Upload className="w-4 h-4" />
-                    إضافة صور تفصيلية
+                    {uploadingDetailed ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        جاري الرفع...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        إضافة صور تفصيلية
+                      </>
+                    )}
                   </label>
                   <span className="text-sm text-gray-400">
-                    {formData.detailedImages.length}/10 صور
+                    {formData.detailedImages.length}/10 صور - Cloudinary
                   </span>
                 </div>
                 {formData.detailedImages.length > 0 && (
@@ -429,9 +435,15 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                           type="button"
                           onClick={() => handleRemoveDetailedImage(index)}
                           className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                          disabled={uploadingDetailed}
                         >
                           <X className="w-3 h-3" />
                         </button>
+                        {image.includes('cloudinary.com') && (
+                          <div className="absolute -bottom-1 -left-1 bg-green-500 text-white text-xs px-1 py-0.5 rounded">
+                            ☁️
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
