@@ -68,6 +68,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { seedOnlyMissingData, clearAllCollections, seedFirebaseData } from './utils/seedFirebase';
+import { fixCategoriesStructure, checkDatabaseStructure } from './utils/fixDatabase';
 import { db } from './firebase.config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
@@ -432,6 +433,28 @@ function Dashboard() {
     } catch (error) {
       console.error('Error clearing and seeding data:', error);
       toast.error('❌ فشل في إنشاء البيانات');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFixDatabaseStructure = async () => {
+    if (!window.confirm('🔧 هذا سيصلح هيكل قاعدة البيانات ويضمن عمل الفئات والخدمات بشكل صحيح. هل تريد المتابعة؟')) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      toast.info('🔧 جاري إصلاح هيكل قاعدة البيانات...');
+      
+      const result = await fixCategoriesStructure();
+      toast.success(`✅ تم إصلاح هيكل قاعدة البيانات بنجاح! الفئات: ${result.categories}, الخدمات: ${result.services}`);
+      
+      // Refresh all data
+      await loadInitialData();
+    } catch (error) {
+      console.error('Error fixing database structure:', error);
+      toast.error('❌ فشل في إصلاح هيكل قاعدة البيانات');
     } finally {
       setLoading(false);
     }
@@ -854,6 +877,14 @@ function Dashboard() {
             <div className="p-3 bg-gray-700 rounded-xl space-y-2">
               <h3 className="text-sm font-medium text-gray-200">إدارة البيانات</h3>
               <button
+                onClick={handleFixDatabaseStructure}
+                disabled={loading}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors border border-green-500/30 disabled:opacity-50"
+              >
+                <Shield className="w-3 h-3" />
+                إصلاح هيكل البيانات
+              </button>
+              <button
                 onClick={handleSeedMissingData}
                 disabled={loading}
                 className="w-full flex items-center gap-2 px-3 py-2 text-xs bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors border border-blue-500/30 disabled:opacity-50"
@@ -1129,8 +1160,8 @@ function Dashboard() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {services.map(service => (
-                  <div key={service.id} className="bg-white rounded-xl shadow-lg p-6">
-                    <div className="relative h-48 mb-4 rounded-lg overflow-hidden">
+                  <div key={service.id} className="bg-gray-800 rounded-2xl p-6 border border-gray-700 hover:border-gray-600 transition-all duration-200">
+                    <div className="relative h-48 mb-4 rounded-lg overflow-hidden bg-gray-700">
                       {service.mainImage ? (
                         <img
                           src={getImageSrc(service.mainImage)}
@@ -1138,36 +1169,60 @@ function Dashboard() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                        <div className="w-full h-full flex items-center justify-center">
                           <Package className="w-12 h-12 text-gray-400" />
                         </div>
                       )}
                     </div>
 
-                    <h3 className="text-xl font-bold mb-2">{service.name}</h3>
-                    <p className="text-gray-600 mb-4">{service.homeShortDescription}</p>
+                    <h3 className="text-xl font-bold text-white mb-2">{service.name}</h3>
+                    <p className="text-gray-300 mb-4 text-sm">{service.homeShortDescription}</p>
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-500">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-sm font-medium text-gray-400">
                         {service.categoryName}
                       </span>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setEditingService(service)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                        >
-                          <Edit className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleServiceDelete(service.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
+                      {service.price && (
+                        <span className="text-sm font-medium text-yellow px-2 py-1 bg-yellow bg-opacity-20 rounded-lg">
+                          {service.price}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setEditingService(service)}
+                        className="flex-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition-colors font-medium text-sm"
+                      >
+                        <Edit className="w-4 h-4 inline ml-1" />
+                        تعديل
+                      </button>
+                      <button
+                        onClick={() => handleServiceDelete(service.id)}
+                        className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors border border-red-500/30"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 ))}
+                
+                {services.length === 0 && (
+                  <div className="col-span-full text-center py-12">
+                    <Package className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-white mb-2">لا توجد خدمات</h3>
+                    <p className="text-gray-400 mb-6">ابدأ بإضافة خدمة جديدة</p>
+                    <button
+                      onClick={() => {
+                        setEditingService(null);
+                        setShowServiceModal(true);
+                      }}
+                      className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-200 font-semibold shadow-lg"
+                    >
+                      إضافة خدمة جديدة
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Service Modal */}
