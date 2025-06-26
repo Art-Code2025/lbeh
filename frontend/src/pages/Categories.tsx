@@ -13,8 +13,11 @@ import {
   Users,
   Package,
   TrendingUp,
-  MapPin
+  MapPin,
+  ChevronRight,
+  Home as HomeIcon
 } from 'lucide-react';
+import { categoriesAPI } from '../services/api'; // Import the API service
 
 interface Category {
   id: string;
@@ -44,76 +47,11 @@ const Categories: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        // First try Netlify Functions
-        try {
-          const categoriesResponse = await fetch('/.netlify/functions/categories');
-          const servicesResponse = await fetch('/.netlify/functions/services');
-          
-          if (categoriesResponse.ok && servicesResponse.ok) {
-            const categoriesData = await categoriesResponse.json();
-            const servicesData = await servicesResponse.json();
-            
-            setCategories(categoriesData || []);
-            setServices(servicesData || []);
-            return;
-          }
-        } catch (netlifyError) {
-          console.log('Netlify Functions not available, using Firebase directly...');
-        }
-
-        // Fallback to Firebase direct access
-        const { initializeApp } = await import('firebase/app');
-        const { getFirestore, collection, getDocs } = await import('firebase/firestore');
-        
-        const firebaseConfig = {
-          apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
-          authDomain: "lbeh-81936.firebaseapp.com",
-          projectId: "lbeh-81936",
-          storageBucket: "lbeh-81936.firebasestorage.app",
-          messagingSenderId: "225834423678",
-          appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        
-        // جلب الفئات
-        const categoriesRef = collection(db, 'categories');
-        const categoriesSnapshot = await getDocs(categoriesRef);
-        const categoriesData: any[] = [];
-        
-        categoriesSnapshot.forEach((doc) => {
-          categoriesData.push({
-            id: doc.id,
-            ...doc.data()
-          });
-        });
-        
+        const categoriesData = await categoriesAPI.getAll();
         setCategories(categoriesData || []);
-
-        // إنشاء الخدمات من الفئات
-        const servicesData: any[] = [];
-        categoriesSnapshot.forEach((doc) => {
-          const category = doc.data();
-          servicesData.push({
-            id: doc.id,
-            name: category.name,
-            category: doc.id,
-            categoryName: category.name,
-            homeShortDescription: category.description,
-            mainImage: getDefaultImage(doc.id),
-            price: getDefaultPrice(doc.id)
-          });
-        });
-        
-        setServices(servicesData || []);
-        
       } catch (error) {
-        console.error("Error fetching data:", error);
-        // Set empty arrays as fallback
-        setCategories([]);
-        setServices([]);
+        console.error("Failed to fetch categories:", error);
+        // Optionally set an error state to show in the UI
       } finally {
         setLoading(false);
       }

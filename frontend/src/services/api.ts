@@ -3,7 +3,7 @@ import { collection, getDocs } from 'firebase/firestore';
 
 // API Configuration
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? '/.netlify/functions' 
+  ? '/api' 
   : 'http://localhost:8888/.netlify/functions';
 
 // Types

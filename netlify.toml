@@ -12,15 +12,6 @@
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
-  force = true
-  headers = {Access-Control-Allow-Origin = "*"}
-
-[[redirects]]
-  from = "/.netlify/functions/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-  force = true
-  headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/*"
@@ -29,7 +20,6 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["firebase-admin", "firebase"]
 
 [[headers]]
   for = "/*"
