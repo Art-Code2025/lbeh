@@ -33,7 +33,7 @@ async function makeApiCall<T>(endpoint: string, options: RequestInit = {}): Prom
         
         // Check if response starts with HTML (common error indicator)
         if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
-            throw new Error('Server returned HTML instead of JSON (Netlify Functions may be unavailable)');
+            throw new Error('Netlify Functions unavailable');
         }
         
         // Check if response is empty
@@ -46,7 +46,7 @@ async function makeApiCall<T>(endpoint: string, options: RequestInit = {}): Prom
         try {
             jsonData = JSON.parse(responseText);
         } catch (parseError) {
-            throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}...`);
+            throw new Error('Invalid JSON response');
         }
         
         // Check HTTP status after parsing
@@ -56,7 +56,10 @@ async function makeApiCall<T>(endpoint: string, options: RequestInit = {}): Prom
         
         return jsonData;
     } catch (error) {
-        console.warn(`API call to ${endpoint} failed:`, error);
+        // Only log detailed errors in development
+        if (process.env.NODE_ENV === 'development') {
+            console.debug(`API fallback to Firebase for ${endpoint}`);
+        }
         throw error;
     }
 }
@@ -112,7 +115,6 @@ export const fetchProviders = async (): Promise<Provider[]> => {
     try {
         return await makeApiCall<Provider[]>('/providers');
     } catch (error) {
-        console.warn('Providers API failed, using Firebase directly:', error);
         return await getFromFirebase<Provider>('providers');
     }
 };
@@ -124,7 +126,6 @@ export const createProvider = async (providerData: Omit<Provider, 'id'>): Promis
             body: JSON.stringify(providerData),
         });
     } catch (error) {
-        console.warn('Provider create API failed, using Firebase directly:', error);
         return await addToFirebase('providers', providerData);
     }
 };
@@ -136,7 +137,6 @@ export const updateProvider = async (id: string, providerData: Partial<Provider>
             body: JSON.stringify({ id, ...providerData }),
         });
     } catch (error) {
-        console.warn('Provider update API failed, using Firebase directly:', error);
         return await updateInFirebase('providers', id, providerData);
     }
 };
@@ -147,7 +147,6 @@ export const deleteProvider = async (id: string): Promise<{message: string}> => 
             method: 'DELETE',
         });
     } catch (error) {
-        console.warn('Provider delete API failed, using Firebase directly:', error);
         return await deleteFromFirebase('providers', id);
     }
 }; 

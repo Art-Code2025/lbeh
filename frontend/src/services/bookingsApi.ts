@@ -66,7 +66,7 @@ async function makeApiCall<T>(endpoint: string, options: RequestInit = {}): Prom
     
     // Check if response starts with HTML (common error indicator)
     if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
-      throw new Error('Server returned HTML instead of JSON (Netlify Functions may be unavailable)');
+      throw new Error('Netlify Functions unavailable');
     }
     
     // Check if response is empty
@@ -79,7 +79,7 @@ async function makeApiCall<T>(endpoint: string, options: RequestInit = {}): Prom
     try {
       jsonData = JSON.parse(responseText);
     } catch (parseError) {
-      throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}...`);
+      throw new Error('Invalid JSON response');
     }
     
     // Check HTTP status after parsing
@@ -89,7 +89,10 @@ async function makeApiCall<T>(endpoint: string, options: RequestInit = {}): Prom
     
     return jsonData;
   } catch (error) {
-    console.warn(`API call to ${endpoint} failed:`, error);
+    // Only log detailed errors in development
+    if (process.env.NODE_ENV === 'development') {
+      console.debug(`API fallback to Firebase for ${endpoint}`);
+    }
     throw error;
   }
 }
@@ -211,7 +214,6 @@ export const bookingsAPI = {
     try {
       return await makeApiCall<Booking[]>('/bookings');
     } catch (error) {
-      console.warn('Bookings API failed, using Firebase directly:', error);
       return await getFromFirebase<Booking>('bookings');
     }
   },
@@ -220,7 +222,6 @@ export const bookingsAPI = {
     try {
       return await makeApiCall<Booking>(`/bookings?id=${id}`);
     } catch (error) {
-      console.warn('Booking getById API failed, using Firebase directly:', error);
       const allBookings = await getFromFirebase<Booking>('bookings');
       return allBookings.find(booking => booking.id === id) || null;
     }
@@ -238,7 +239,6 @@ export const bookingsAPI = {
         }),
       });
     } catch (error) {
-      console.warn('Booking create API failed, using Firebase directly:', error);
       return await addToFirebase('bookings', {
         ...bookingData,
         status: 'pending',
@@ -255,7 +255,6 @@ export const bookingsAPI = {
         body: JSON.stringify({ id, status }),
       });
     } catch (error) {
-      console.warn('Booking update API failed, using Firebase directly:', error);
       return await updateInFirebase('bookings', id, { status });
     }
   },
@@ -267,7 +266,6 @@ export const bookingsAPI = {
         body: JSON.stringify({ id, ...bookingData }),
       });
     } catch (error) {
-      console.warn('Booking update API failed, using Firebase directly:', error);
       return await updateInFirebase('bookings', id, bookingData);
     }
   },
@@ -278,7 +276,6 @@ export const bookingsAPI = {
         method: 'DELETE',
       });
     } catch (error) {
-      console.warn('Booking delete API failed, using Firebase directly:', error);
       return await deleteFromFirebase('bookings', id);
     }
   },
@@ -287,7 +284,6 @@ export const bookingsAPI = {
     try {
       return await makeApiCall<BookingStats>('/bookings/stats');
     } catch (error) {
-      console.warn('Booking stats API failed, calculating from Firebase data:', error);
       const bookings = await getFromFirebase<Booking>('bookings');
       return calculateStats(bookings);
     }
@@ -297,7 +293,6 @@ export const bookingsAPI = {
     try {
       return await makeApiCall<Booking[]>(`/bookings?status=${status}`);
     } catch (error) {
-      console.warn('Booking getByStatus API failed, using Firebase directly:', error);
       const allBookings = await getFromFirebase<Booking>('bookings');
       return allBookings.filter(booking => booking.status === status);
     }

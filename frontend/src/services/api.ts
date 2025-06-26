@@ -48,7 +48,7 @@ async function makeApiCall<T>(endpoint: string, options: RequestInit = {}): Prom
     
     // Check if response starts with HTML (common error indicator)
     if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
-      throw new Error('Server returned HTML instead of JSON (Netlify Functions may be unavailable)');
+      throw new Error('Netlify Functions unavailable');
     }
     
     // Check if response is empty
@@ -61,7 +61,7 @@ async function makeApiCall<T>(endpoint: string, options: RequestInit = {}): Prom
     try {
       jsonData = JSON.parse(responseText);
     } catch (parseError) {
-      throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}...`);
+      throw new Error('Invalid JSON response');
     }
     
     // Check HTTP status after parsing to provide better error messages
@@ -71,7 +71,10 @@ async function makeApiCall<T>(endpoint: string, options: RequestInit = {}): Prom
     
     return jsonData;
   } catch (error) {
-    console.warn(`API call to ${endpoint} failed:`, error);
+    // Only log detailed errors in development
+    if (process.env.NODE_ENV === 'development') {
+      console.debug(`API fallback to Firebase for ${endpoint}:`, error);
+    }
     throw error;
   }
 }
@@ -126,51 +129,50 @@ async function deleteFromFirebase(collectionName: string, id: string): Promise<{
 // Categories API
 export const categoriesAPI = {
   // Get all categories
-  getAll: async (): Promise<Category[]> => {
+  async getAll(): Promise<Category[]> {
     try {
       return await makeApiCall('/categories');
     } catch (error) {
-      console.warn('Categories API failed, using Firebase directly:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('Using Firebase for categories');
+      }
       return await getFromFirebase<Category>('categories');
     }
   },
   
   // Create new category
-  create: async (categoryData: Omit<Category, 'id' | 'createdAt'>): Promise<ApiResponse<{id: string}>> => {
+  async create(categoryData: Omit<Category, 'id' | 'createdAt'>): Promise<ApiResponse<{id: string}>> {
     try {
       return await makeApiCall('/categories', {
         method: 'POST',
         body: JSON.stringify(categoryData),
       });
     } catch (error) {
-      console.warn('Categories create API failed, using Firebase directly:', error);
       const result = await addToFirebase('categories', categoryData);
       return { data: result, message: 'Category created successfully' };
     }
   },
   
   // Update category
-  update: async (id: string, categoryData: Partial<Category>): Promise<ApiResponse<{}>> => {
+  async update(id: string, categoryData: Partial<Category>): Promise<ApiResponse<{}>> {
     try {
       return await makeApiCall(`/categories?id=${id}`, {
         method: 'PUT',
         body: JSON.stringify({ id, ...categoryData }),
       });
     } catch (error) {
-      console.warn('Categories update API failed, using Firebase directly:', error);
       const result = await updateInFirebase('categories', id, categoryData);
       return { message: result.message };
     }
   },
   
   // Delete category
-  delete: async (id: string): Promise<ApiResponse<{}>> => {
+  async delete(id: string): Promise<ApiResponse<{}>> {
     try {
       return await makeApiCall(`/categories?id=${id}`, {
         method: 'DELETE',
       });
     } catch (error) {
-      console.warn('Categories delete API failed, using Firebase directly:', error);
       const result = await deleteFromFirebase('categories', id);
       return { message: result.message };
     }
@@ -180,11 +182,13 @@ export const categoriesAPI = {
 // Services API
 export const servicesAPI = {
   // Get all services or filter by category
-  getAll: async (categoryId: string | null = null): Promise<Service[]> => {
+  async getAll(categoryId: string | null = null): Promise<Service[]> {
     try {
       return await makeApiCall('/services');
     } catch (error) {
-      console.warn('Services API failed, using Firebase directly:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('Using Firebase for services');
+      }
       const allServices = await getFromFirebase<Service>('services');
       return categoryId 
         ? allServices.filter(service => service.category === categoryId)
@@ -193,52 +197,48 @@ export const servicesAPI = {
   },
   
   // Get service by ID
-  getById: async (id: string): Promise<Service | null> => {
+  async getById(id: string): Promise<Service | null> {
     try {
       return await makeApiCall<Service>(`/services?id=${id}`);
     } catch (error) {
-      console.warn('Services API failed for getById, using Firebase directly:', error);
       const allServices = await getFromFirebase<Service>('services');
       return allServices.find(service => service.id.toString() === id) || null;
     }
   },
   
   // Create new service
-  create: async (serviceData: Omit<Service, 'id'>): Promise<ApiResponse<{id: string}>> => {
+  async create(serviceData: Omit<Service, 'id'>): Promise<ApiResponse<{id: string}>> {
     try {
       return await makeApiCall('/services', {
         method: 'POST',
         body: JSON.stringify(serviceData),
       });
     } catch (error) {
-      console.warn('Services create API failed, using Firebase directly:', error);
       const result = await addToFirebase('services', serviceData);
       return { data: result, message: 'Service created successfully' };
     }
   },
   
   // Update service
-  update: async (id: string, serviceData: Partial<Service>): Promise<ApiResponse<{}>> => {
+  async update(id: string, serviceData: Partial<Service>): Promise<ApiResponse<{}>> {
     try {
       return await makeApiCall(`/services?id=${id}`, {
         method: 'PUT',
         body: JSON.stringify({ id, ...serviceData }),
       });
     } catch (error) {
-      console.warn('Services update API failed, using Firebase directly:', error);
       const result = await updateInFirebase('services', id, serviceData);
       return { message: result.message };
     }
   },
   
   // Delete service
-  delete: async (id: string): Promise<ApiResponse<{}>> => {
+  async delete(id: string): Promise<ApiResponse<{}>> {
     try {
       return await makeApiCall(`/services?id=${id}`, {
         method: 'DELETE',
       });
     } catch (error) {
-      console.warn('Services delete API failed, using Firebase directly:', error);
       const result = await deleteFromFirebase('services', id);
       return { message: result.message };
     }

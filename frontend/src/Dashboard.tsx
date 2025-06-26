@@ -75,6 +75,8 @@ import {
 import { bookingsAPI } from './services/bookingsApi';
 import { fetchProviders } from './services/providersApi';
 import { seedOnlyMissingData, clearAllCollections, seedFirebaseData } from './utils/seedFirebase';
+import { db } from './firebase.config';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
 // Types from APIs
 import type { Booking, BookingStats } from './services/bookingsApi';
@@ -253,14 +255,19 @@ function Dashboard() {
 
   const fetchCategories = async () => {
     try {
-      const data = await categoriesAPI.getAll();
+      const querySnapshot = await getDocs(collection(db, 'categories'));
+      const data = querySnapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data() 
+      })) as Category[];
+      
       // Transform to match local interface
       const transformedCategories: Category[] = data.map(cat => ({
         ...cat,
         serviceCount: services.filter(s => s.category === cat.id).length
       }));
       setCategories(transformedCategories);
-      console.log('📁 Categories loaded:', data.length);
+      console.log('✅ Categories loaded:', data.length);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
       toast.error('فشل في تحميل الفئات');
@@ -269,10 +276,16 @@ function Dashboard() {
 
   const fetchServices = async () => {
     try {
-      const data = await servicesAPI.getAll();
+      const querySnapshot = await getDocs(collection(db, 'services'));
+      const data = querySnapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data() 
+      })) as any[];
+      
       // Transform to match local interface
       const transformedServices: Service[] = data.map(service => ({
         ...service,
+        id: parseInt(service.id) || Date.now(),
         detailsShortDescription: service.homeShortDescription || '',
         description: service.homeShortDescription || '',
         detailedImages: [],
@@ -280,7 +293,7 @@ function Dashboard() {
         features: []
       }));
       setServices(transformedServices);
-      console.log('🛠️ Services loaded:', data.length);
+      console.log('✅ Services loaded:', data.length);
     } catch (error) {
       console.error('Failed to fetch services:', error);
       toast.error('فشل في تحميل الخدمات');
@@ -289,9 +302,13 @@ function Dashboard() {
 
   const fetchBookings = async () => {
     try {
-      const data = await bookingsAPI.getAll();
+      const querySnapshot = await getDocs(collection(db, 'bookings'));
+      const data = querySnapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data() 
+      })) as any[];
       setBookings(data);
-      console.log('📋 Bookings loaded:', data.length);
+      console.log('✅ Bookings loaded:', data.length);
     } catch (error) {
       console.error('Failed to fetch bookings:', error);
       toast.error('فشل في تحميل الحجوزات');
@@ -300,9 +317,28 @@ function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const data = await bookingsAPI.getStats();
-      setStats(data);
-      console.log('📊 Stats loaded:', data);
+      const querySnapshot = await getDocs(collection(db, 'bookings'));
+      const bookings = querySnapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data() 
+      })) as any[];
+      
+      // Calculate stats locally
+      const stats = {
+        total: bookings.length,
+        pending: bookings.filter(b => b.status === 'pending').length,
+        confirmed: bookings.filter(b => b.status === 'confirmed').length,
+        inProgress: bookings.filter(b => b.status === 'in_progress').length,
+        completed: bookings.filter(b => b.status === 'completed').length,
+        cancelled: bookings.filter(b => b.status === 'cancelled').length,
+        byCategory: {},
+        byService: {},
+        categoryStats: [],
+        dailyStats: []
+      };
+      
+      setStats(stats);
+      console.log('✅ Stats loaded');
     } catch (error) {
       console.error('Failed to fetch stats:', error);
       toast.error('فشل في تحميل الإحصائيات');
@@ -311,9 +347,13 @@ function Dashboard() {
 
   const fetchProvidersData = async () => {
     try {
-      const data = await fetchProviders();
+      const querySnapshot = await getDocs(collection(db, 'providers'));
+      const data = querySnapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data() 
+      })) as Provider[];
       setProviders(data);
-      console.log('👥 Providers loaded:', data.length);
+      console.log('✅ Providers loaded:', data.length);
     } catch (error) {
       console.error('Failed to fetch providers:', error);
       toast.error('فشل في تحميل مقدمي الخدمات');
@@ -365,11 +405,11 @@ function Dashboard() {
   };
 
   const handleServiceDelete = async (id: number) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذه الخدمة؟ سيتم حذف جميع الحجوزات المتعلقة بها أيضاً.')) {
+    if (!window.confirm('هل أنت متأكد من حذف هذه الخدمة؟')) {
       return;
     }
     try {
-      await servicesAPI.delete(id.toString());
+      await deleteDoc(doc(db, 'services', id.toString()));
       toast.success('تم حذف الخدمة بنجاح');
       await fetchServices();
     } catch (error: any) {
@@ -380,7 +420,10 @@ function Dashboard() {
 
   const handleBookingStatusUpdate = async (bookingId: string, newStatus: Booking['status']) => {
     try {
-      await bookingsAPI.updateStatus(bookingId, newStatus);
+      await updateDoc(doc(db, 'bookings', bookingId), {
+        status: newStatus,
+        updatedAt: new Date().toISOString()
+      });
       toast.success('تم تحديث حالة الحجز بنجاح');
       await fetchBookings();
       await fetchStats();
@@ -396,7 +439,7 @@ function Dashboard() {
     }
     
     try {
-      await bookingsAPI.delete(bookingId);
+      await deleteDoc(doc(db, 'bookings', bookingId));
       toast.success('تم حذف الحجز بنجاح');
       await fetchBookings();
       await fetchStats();
@@ -535,11 +578,30 @@ function Dashboard() {
     }]
   } : null;
 
-  const handleCategorySave = (newCategory: Category) => {
-    // هنا يمكن إضافة API call لحفظ الفئة
-    console.log('Saving category:', newCategory);
-    setShowCategoryModal(false);
-    setEditingCategory(null);
+  const handleCategorySave = async (categoryData: Category) => {
+    try {
+      if (editingCategory) {
+        // Update existing category
+        await updateDoc(doc(db, 'categories', editingCategory.id), {
+          ...categoryData,
+          updatedAt: new Date().toISOString()
+        });
+        toast.success('تم تحديث الفئة بنجاح');
+      } else {
+        // Add new category
+        await addDoc(collection(db, 'categories'), {
+          ...categoryData,
+          createdAt: new Date().toISOString()
+        });
+        toast.success('تم إضافة الفئة بنجاح');
+      }
+      setShowCategoryModal(false);
+      setEditingCategory(null);
+      await fetchCategories();
+    } catch (error) {
+      console.error('Error saving category:', error);
+      toast.error('فشل في حفظ الفئة');
+    }
   };
 
   const handleCategoryEdit = (category: Category) => {
@@ -548,22 +610,43 @@ function Dashboard() {
   };
 
   const handleCategoryDelete = async (categoryId: string) => {
-    if (window.confirm('هل أنت متأكد من حذف هذه الفئة؟')) {
-      try {
-        // API call to delete category
-        toast.success('تم حذف الفئة بنجاح');
-      } catch (error) {
-        toast.error('حدث خطأ أثناء حذف الفئة');
-      }
+    if (!window.confirm('هل أنت متأكد من حذف هذه الفئة؟')) {
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, 'categories', categoryId));
+      toast.success('تم حذف الفئة بنجاح');
+      await fetchCategories();
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      toast.error('فشل في حذف الفئة');
     }
   };
 
   const handleServiceSave = async (serviceData: Service) => {
-    // Implementation for saving service
-    console.log('Saving service:', serviceData);
-    setShowServiceModal(false);
-    setEditingService(null);
-    await fetchServices();
+    try {
+      if (editingService) {
+        // Update existing service
+        await updateDoc(doc(db, 'services', editingService.id.toString()), {
+          ...serviceData,
+          updatedAt: new Date().toISOString()
+        });
+        toast.success('تم تحديث الخدمة بنجاح');
+      } else {
+        // Add new service
+        await addDoc(collection(db, 'services'), {
+          ...serviceData,
+          createdAt: new Date().toISOString()
+        });
+        toast.success('تم إضافة الخدمة بنجاح');
+      }
+      setShowServiceModal(false);
+      setEditingService(null);
+      await fetchServices();
+    } catch (error) {
+      console.error('Error saving service:', error);
+      toast.error('فشل في حفظ الخدمة');
+    }
   };
 
   const handleShowProviders = (booking: Booking) => {
