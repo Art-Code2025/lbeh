@@ -102,6 +102,64 @@ export const fixCategoriesStructure = async () => {
   }
 };
 
+// New function to completely reset and rebuild database
+export const completelyResetDatabase = async () => {
+  console.log('🔄 Completely resetting database...');
+  
+  try {
+    // Get all collections
+    const collections = ['categories', 'services', 'bookings', 'providers'];
+    
+    for (const collectionName of collections) {
+      const snapshot = await getDocs(collection(db, collectionName));
+      console.log(`📊 Found ${snapshot.size} documents in ${collectionName}`);
+      
+      // Only delete categories and services, keep bookings and providers
+      if (collectionName === 'categories' || collectionName === 'services') {
+        for (const docSnapshot of snapshot.docs) {
+          await deleteDoc(doc(db, collectionName, docSnapshot.id));
+        }
+        console.log(`🗑️ Cleared ${collectionName} collection`);
+      }
+    }
+
+    // Add proper categories with custom IDs
+    for (const category of properCategories) {
+      const { id, ...categoryData } = category;
+      await setDoc(doc(db, 'categories', id), {
+        ...categoryData,
+        createdAt: new Date().toISOString()
+      });
+      console.log(`✅ Added category: ${category.name} with ID: ${id}`);
+    }
+
+    // Add proper services
+    for (const service of properServices) {
+      const docRef = await addDoc(collection(db, 'services'), {
+        ...service,
+        description: service.homeShortDescription,
+        features: [],
+        detailedImages: [],
+        imageDetails: [],
+        availability: '24/7',
+        createdAt: new Date().toISOString()
+      });
+      console.log(`✅ Added service: ${service.name} with ID: ${docRef.id}`);
+    }
+
+    console.log('🎉 Database completely reset and rebuilt successfully!');
+    
+    return {
+      categories: properCategories.length,
+      services: properServices.length,
+      message: 'Database reset completed successfully'
+    };
+  } catch (error) {
+    console.error('❌ Error resetting database:', error);
+    throw error;
+  }
+};
+
 export const checkDatabaseStructure = async () => {
   console.log('🔍 Checking database structure...');
   
@@ -118,7 +176,7 @@ export const checkDatabaseStructure = async () => {
 
     console.log('📊 Current services:');
     servicesSnapshot.forEach(doc => {
-      console.log(`  - ID: ${doc.id}, Name: ${doc.data().name}`);
+      console.log(`  - ID: ${doc.id}, Name: ${doc.data().name}, Category: ${doc.data().category}`);
     });
 
     return {

@@ -68,7 +68,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { seedOnlyMissingData, clearAllCollections, seedFirebaseData } from './utils/seedFirebase';
-import { fixCategoriesStructure, checkDatabaseStructure } from './utils/fixDatabase';
+import { fixCategoriesStructure, checkDatabaseStructure, completelyResetDatabase } from './utils/fixDatabase';
 import { db } from './firebase.config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
@@ -321,16 +321,32 @@ function Dashboard() {
       
       // Transform to match local interface - keep ID as string from Firebase
       const transformedServices: Service[] = data.map(service => ({
-        ...service,
         id: service.id, // Keep as string Firebase document ID
-        detailsShortDescription: service.homeShortDescription || '',
-        description: service.homeShortDescription || '',
-        detailedImages: [],
-        imageDetails: [],
-        features: []
+        name: service.name || '',
+        category: service.category || '',
+        categoryName: service.categoryName || '',
+        homeShortDescription: service.homeShortDescription || '',
+        detailsShortDescription: service.detailsShortDescription || service.homeShortDescription || '',
+        description: service.description || service.homeShortDescription || '',
+        mainImage: service.mainImage || '',
+        detailedImages: service.detailedImages || [],
+        imageDetails: service.imageDetails || [],
+        features: service.features || [],
+        duration: service.duration || '',
+        availability: service.availability || '',
+        price: service.price || ''
       }));
       setServices(transformedServices);
       console.log('✅ Services loaded:', transformedServices.length);
+      
+      // Update category service counts
+      if (categories.length > 0) {
+        const updatedCategories = categories.map(category => ({
+          ...category,
+          serviceCount: transformedServices.filter(service => service.category === category.id).length
+        }));
+        setCategories(updatedCategories);
+      }
     } catch (error) {
       console.error('Failed to fetch services:', error);
       toast.error('فشل في تحميل الخدمات');
@@ -460,6 +476,32 @@ function Dashboard() {
     }
   };
 
+  const handleCompleteReset = async () => {
+    if (!window.confirm('⚠️ هذا سيحذف جميع الفئات والخدمات الحالية ويعيد إنشاؤها من الصفر. الحجوزات ومقدمو الخدمة سيبقون كما هم. هل أنت متأكد؟')) {
+      return;
+    }
+    
+    if (!window.confirm('🚨 تأكيد أخير: هذا الإجراء لا يمكن التراجع عنه. هل تريد المتابعة؟')) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      toast.info('🔄 جاري إعادة تعيين قاعدة البيانات بالكامل...');
+      
+      const result = await completelyResetDatabase();
+      toast.success(`🎉 تم إعادة تعيين قاعدة البيانات بنجاح! الفئات: ${result.categories}, الخدمات: ${result.services}`);
+      
+      // Refresh all data
+      await loadInitialData();
+    } catch (error) {
+      console.error('Error completely resetting database:', error);
+      toast.error('❌ فشل في إعادة تعيين قاعدة البيانات');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleServiceDelete = async (id: string) => {
     if (!window.confirm('هل أنت متأكد من حذف هذه الخدمة؟')) {
       return;
@@ -472,6 +514,12 @@ function Dashboard() {
       console.error('Error deleting service:', error);
       toast.error('فشل في حذف الخدمة');
     }
+  };
+
+  const handleServiceEdit = (service: Service) => {
+    console.log('Editing service:', service.id, service.name);
+    setEditingService(service);
+    setShowServiceModal(true);
   };
 
   const handleBookingStatusUpdate = async (bookingId: string, newStatus: Booking['status']) => {
@@ -670,7 +718,15 @@ function Dashboard() {
       await fetchCategories();
     } catch (error: any) {
       console.error('Error saving category:', error);
-      toast.error(`فشل في حفظ الفئة: ${error?.message || 'خطأ غير معروف'}`);
+      // Enhanced error handling
+      if (error?.code === 'not-found') {
+        toast.error('الفئة غير موجودة في قاعدة البيانات. جاري إصلاح هيكل البيانات...');
+        await handleFixDatabaseStructure();
+      } else if (error?.code === 'permission-denied') {
+        toast.error('ليس لديك صلاحية لتعديل هذه الفئة');
+      } else {
+        toast.error(`فشل في حفظ الفئة: ${error?.message || 'خطأ غير معروف'}`);
+      }
     }
   };
 
@@ -698,7 +754,8 @@ function Dashboard() {
     } catch (error: any) {
       console.error('Error deleting category:', error);
       if (error?.code === 'not-found') {
-        toast.error('الفئة غير موجودة في قاعدة البيانات');
+        toast.error('الفئة غير موجودة في قاعدة البيانات. جاري إصلاح هيكل البيانات...');
+        await handleFixDatabaseStructure();
       } else if (error?.code === 'permission-denied') {
         toast.error('ليس لديك صلاحية لحذف هذه الفئة');
       } else {
@@ -711,13 +768,18 @@ function Dashboard() {
     try {
       if (editingService && editingService.id) {
         // Update existing service - use Firebase document ID
+        console.log('Updating service with Firebase ID:', editingService.id);
         await updateDoc(doc(db, 'services', editingService.id), {
           name: serviceData.name,
           category: serviceData.category,
           categoryName: serviceData.categoryName,
           homeShortDescription: serviceData.homeShortDescription,
-          description: serviceData.description,
+          description: serviceData.description || serviceData.homeShortDescription,
           mainImage: serviceData.mainImage,
+          price: serviceData.price,
+          duration: serviceData.duration,
+          availability: serviceData.availability,
+          features: serviceData.features || [],
           updatedAt: new Date().toISOString()
         });
         toast.success('تم تحديث الخدمة بنجاح');
@@ -728,8 +790,12 @@ function Dashboard() {
           category: serviceData.category,
           categoryName: serviceData.categoryName,
           homeShortDescription: serviceData.homeShortDescription,
-          description: serviceData.description,
+          description: serviceData.description || serviceData.homeShortDescription,
           mainImage: serviceData.mainImage,
+          price: serviceData.price,
+          duration: serviceData.duration,
+          availability: serviceData.availability,
+          features: serviceData.features || [],
           createdAt: new Date().toISOString()
         };
         const docRef = await addDoc(collection(db, 'services'), serviceToAdd);
@@ -883,6 +949,14 @@ function Dashboard() {
               >
                 <Shield className="w-3 h-3" />
                 إصلاح هيكل البيانات
+              </button>
+              <button
+                onClick={handleCompleteReset}
+                disabled={loading}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors border border-red-500/30 disabled:opacity-50"
+              >
+                <RefreshCw className="w-3 h-3" />
+                إعادة تعيين كاملة
               </button>
               <button
                 onClick={handleSeedMissingData}
@@ -1183,7 +1257,7 @@ function Dashboard() {
                         {service.categoryName}
                       </span>
                       {service.price && (
-                        <span className="text-sm font-medium text-yellow px-2 py-1 bg-yellow bg-opacity-20 rounded-lg">
+                        <span className="text-sm font-medium text-yellow-400 px-2 py-1 bg-yellow-500/20 rounded-lg">
                           {service.price}
                         </span>
                       )}
@@ -1191,7 +1265,7 @@ function Dashboard() {
 
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setEditingService(service)}
+                        onClick={() => handleServiceEdit(service)}
                         className="flex-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition-colors font-medium text-sm"
                       >
                         <Edit className="w-4 h-4 inline ml-1" />

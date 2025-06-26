@@ -39,9 +39,40 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
 
   useEffect(() => {
     if (editingService) {
-      setFormData(editingService);
+      setFormData({
+        name: editingService.name || '',
+        category: editingService.category || '',
+        categoryName: editingService.categoryName || '',
+        homeShortDescription: editingService.homeShortDescription || '',
+        detailsShortDescription: editingService.detailsShortDescription || editingService.homeShortDescription || '',
+        description: editingService.description || editingService.homeShortDescription || '',
+        mainImage: editingService.mainImage || '',
+        detailedImages: editingService.detailedImages || [],
+        imageDetails: editingService.imageDetails || [],
+        features: editingService.features || [],
+        duration: editingService.duration || '',
+        availability: editingService.availability || '',
+        price: editingService.price || ''
+      });
+    } else {
+      // Reset form for new service
+      setFormData({
+        name: '',
+        category: '',
+        categoryName: '',
+        homeShortDescription: '',
+        detailsShortDescription: '',
+        description: '',
+        mainImage: '',
+        detailedImages: [],
+        imageDetails: [],
+        features: [],
+        duration: '',
+        availability: '',
+        price: ''
+      });
     }
-  }, [editingService]);
+  }, [editingService, isOpen]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
