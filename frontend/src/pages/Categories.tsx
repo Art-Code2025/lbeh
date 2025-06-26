@@ -15,7 +15,6 @@ import {
   TrendingUp,
   MapPin
 } from 'lucide-react';
-import { categoriesAPI, servicesAPI } from '../services/api';
 
 interface Category {
   id: string;
@@ -46,12 +45,68 @@ const Categories: React.FC = () => {
       try {
         setLoading(true);
         
-        // جلب الكاتيجوريز من Firebase
-        const categoriesData = await categoriesAPI.getAll();
+        // First try Netlify Functions
+        try {
+          const categoriesResponse = await fetch('/.netlify/functions/categories');
+          const servicesResponse = await fetch('/.netlify/functions/services');
+          
+          if (categoriesResponse.ok && servicesResponse.ok) {
+            const categoriesData = await categoriesResponse.json();
+            const servicesData = await servicesResponse.json();
+            
+            setCategories(categoriesData || []);
+            setServices(servicesData || []);
+            return;
+          }
+        } catch (netlifyError) {
+          console.log('Netlify Functions not available, using Firebase directly...');
+        }
+
+        // Fallback to Firebase direct access
+        const { initializeApp } = await import('firebase/app');
+        const { getFirestore, collection, getDocs } = await import('firebase/firestore');
+        
+        const firebaseConfig = {
+          apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
+          authDomain: "lbeh-81936.firebaseapp.com",
+          projectId: "lbeh-81936",
+          storageBucket: "lbeh-81936.firebasestorage.app",
+          messagingSenderId: "225834423678",
+          appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // جلب الفئات
+        const categoriesRef = collection(db, 'categories');
+        const categoriesSnapshot = await getDocs(categoriesRef);
+        const categoriesData: any[] = [];
+        
+        categoriesSnapshot.forEach((doc) => {
+          categoriesData.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        
         setCategories(categoriesData || []);
 
-        // جلب الخدمات لحساب إحصائيات كل فئة من Firebase
-        const servicesData = await servicesAPI.getAll();
+        // إنشاء الخدمات من الفئات
+        const servicesData: any[] = [];
+        categoriesSnapshot.forEach((doc) => {
+          const category = doc.data();
+          servicesData.push({
+            id: doc.id,
+            name: category.name,
+            category: doc.id,
+            categoryName: category.name,
+            homeShortDescription: category.description,
+            mainImage: getDefaultImage(doc.id),
+            price: getDefaultPrice(doc.id)
+          });
+        });
+        
         setServices(servicesData || []);
         
       } catch (error) {
@@ -66,6 +121,25 @@ const Categories: React.FC = () => {
 
     fetchData();
   }, []);
+
+  // Helper functions
+  function getDefaultImage(categoryId: string) {
+    const images: Record<string, string> = {
+      'internal_delivery': 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55?w=500',
+      'external_trips': 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=500',
+      'home_maintenance': 'https://images.unsplash.com/photo-1585128792020-803d29415281?w=500'
+    };
+    return images[categoryId] || 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=500';
+  }
+
+  function getDefaultPrice(categoryId: string) {
+    const prices: Record<string, string> = {
+      'internal_delivery': 'من 20 ريال',
+      'external_trips': 'من 250 ريال',
+      'home_maintenance': 'حسب الخدمة'
+    };
+    return prices[categoryId] || 'حسب الطلب';
+  }
 
   const getIconComponent = (iconName: string) => {
     switch (iconName) {

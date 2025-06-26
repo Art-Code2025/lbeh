@@ -22,7 +22,6 @@ import {
   UserCircle,
   Package
 } from 'lucide-react';
-import { categoriesAPI, servicesAPI, testFirebaseConnection } from '../services/api';
 
 interface Category {
   id: string;
@@ -48,31 +47,79 @@ const Home: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
-  const [firebaseConnected, setFirebaseConnected] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
-        
-        // اختبار اتصال Firebase أولاً
         console.log('🔥 Testing Firebase connection...');
-        const isConnected = await testFirebaseConnection();
-        setFirebaseConnected(isConnected);
         
-        if (isConnected) {
-          console.log('✅ Firebase connected! Fetching data...');
-        } else {
-          console.log('❌ Firebase connection failed, but will try API...');
+        // First try Netlify Functions
+        try {
+          const categoriesResponse = await fetch('/.netlify/functions/categories');
+          const servicesResponse = await fetch('/.netlify/functions/services');
+          
+          if (categoriesResponse.ok && servicesResponse.ok) {
+            const categoriesData = await categoriesResponse.json();
+            const servicesData = await servicesResponse.json();
+            
+            console.log('📁 Categories loaded:', categoriesData.length);
+            setCategories(categoriesData || []);
+            
+            console.log('🛠️ Services loaded:', servicesData.length);
+            setServices((servicesData || []).slice(0, 6)); // عرض أول 6 خدمات فقط
+            return;
+          }
+        } catch (netlifyError) {
+          console.log('Netlify Functions not available, using Firebase directly...');
         }
+
+        // Fallback to Firebase direct access
+        const { initializeApp } = await import('firebase/app');
+        const { getFirestore, collection, getDocs } = await import('firebase/firestore');
         
-        // جلب الكاتيجوريز
-        const categoriesData = await categoriesAPI.getAll();
+        const firebaseConfig = {
+          apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
+          authDomain: "lbeh-81936.firebaseapp.com",
+          projectId: "lbeh-81936",
+          storageBucket: "lbeh-81936.firebasestorage.app",
+          messagingSenderId: "225834423678",
+          appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // جلب الفئات
+        const categoriesRef = collection(db, 'categories');
+        const categoriesSnapshot = await getDocs(categoriesRef);
+        const categoriesData: any[] = [];
+        
+        categoriesSnapshot.forEach((doc) => {
+          categoriesData.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        
         console.log('📁 Categories loaded:', categoriesData.length);
         setCategories(categoriesData || []);
 
-        // جلب الخدمات
-        const servicesData = await servicesAPI.getAll();
+        // إنشاء الخدمات من الفئات
+        const servicesData: any[] = [];
+        categoriesSnapshot.forEach((doc) => {
+          const category = doc.data();
+          servicesData.push({
+            id: doc.id,
+            name: category.name,
+            category: doc.id,
+            categoryName: category.name,
+            homeShortDescription: category.description,
+            mainImage: getDefaultImage(doc.id),
+            price: getDefaultPrice(doc.id),
+            duration: getDefaultDuration(doc.id)
+          });
+        });
+        
         console.log('🛠️ Services loaded:', servicesData.length);
         setServices((servicesData || []).slice(0, 6)); // عرض أول 6 خدمات فقط
         
@@ -139,6 +186,34 @@ const Home: React.FC = () => {
         return 'bg-cyan-100 text-cyan-600 group-hover:bg-cyan-600 group-hover:text-white';
     }
   };
+
+  // Helper functions
+  function getDefaultImage(categoryId: string) {
+    const images: Record<string, string> = {
+      'internal_delivery': 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55?w=500',
+      'external_trips': 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=500',
+      'home_maintenance': 'https://images.unsplash.com/photo-1585128792020-803d29415281?w=500'
+    };
+    return images[categoryId] || 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=500';
+  }
+
+  function getDefaultDuration(categoryId: string) {
+    const durations: Record<string, string> = {
+      'internal_delivery': '30-60 دقيقة',
+      'external_trips': '2-8 ساعات',
+      'home_maintenance': '1-4 ساعات'
+    };
+    return durations[categoryId] || '1-2 ساعة';
+  }
+
+  function getDefaultPrice(categoryId: string) {
+    const prices: Record<string, string> = {
+      'internal_delivery': 'من 20 ريال',
+      'external_trips': 'من 250 ريال',
+      'home_maintenance': 'حسب الخدمة'
+    };
+    return prices[categoryId] || 'حسب الطلب';
+  }
 
   return (
     <div dir="rtl" className="overflow-x-hidden bg-gradient-to-b from-[#f0faff] to-[#e0f2fe]">
