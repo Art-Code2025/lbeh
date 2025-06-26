@@ -43,4 +43,24 @@ export const fetchProviders = async (): Promise<Provider[]> => {
         console.warn('Netlify function for providers failed, falling back to Firebase direct.', error);
         return getDirectFromFirebase<Provider>('providers');
     }
+};
+
+export const createProvider = (providerData: Omit<Provider, 'id'>): Promise<{id: string}> => {
+    return apiCall('/providers', {
+        method: 'POST',
+        body: JSON.stringify(providerData),
+    });
+};
+
+export const updateProvider = (id: string, providerData: Partial<Provider>): Promise<{message: string}> => {
+    return apiCall(`/providers?id=${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ id, ...providerData }),
+    });
+};
+
+export const deleteProvider = (id: string): Promise<{message: string}> => {
+    return apiCall(`/providers?id=${id}`, {
+        method: 'DELETE',
+    });
 }; 

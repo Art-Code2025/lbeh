@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Star, Phone, MessageCircle, User, MapPin, Shield } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { fetchProviders as apiFetchProviders } from '../services/providersApi';
+import { 
+  fetchProviders as apiFetchProviders,
+  createProvider,
+  updateProvider,
+  deleteProvider
+} from '../services/providersApi';
 
 interface Provider {
   id: string;
@@ -59,11 +64,6 @@ const ProvidersManagement: React.FC<ProvidersManagementProps> = ({ isOpen, onClo
 
   const handleSave = async () => {
     try {
-      const method = editingProvider ? 'PUT' : 'POST';
-      const url = editingProvider 
-        ? `/.netlify/functions/providers/${editingProvider.id}`
-        : '/.netlify/functions/providers';
-
       const providerData = {
         ...formData,
         services: formData.services.filter(s => s.trim()),
@@ -71,21 +71,18 @@ const ProvidersManagement: React.FC<ProvidersManagementProps> = ({ isOpen, onClo
         destinations: formData.destinations?.filter(s => s.trim()) || []
       };
 
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(providerData)
-      });
-
-      if (response.ok) {
-        toast.success(editingProvider ? 'تم تحديث المقدم بنجاح' : 'تم إضافة المقدم بنجاح');
-        setShowAddModal(false);
-        setEditingProvider(null);
-        resetForm();
-        fetchProviders();
+      if (editingProvider) {
+        await updateProvider(editingProvider.id, providerData);
+        toast.success('تم تحديث المقدم بنجاح');
       } else {
-        throw new Error('فشل في حفظ البيانات');
+        await createProvider(providerData);
+        toast.success('تم إضافة المقدم بنجاح');
       }
+      
+      setShowAddModal(false);
+      setEditingProvider(null);
+      resetForm();
+      fetchProviders();
     } catch (error) {
       toast.error('حدث خطأ أثناء الحفظ');
     }
@@ -95,16 +92,9 @@ const ProvidersManagement: React.FC<ProvidersManagementProps> = ({ isOpen, onClo
     if (!window.confirm('هل أنت متأكد من حذف هذا المقدم؟')) return;
 
     try {
-      const response = await fetch(`/.netlify/functions/providers/${id}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        toast.success('تم حذف المقدم بنجاح');
-        fetchProviders();
-      } else {
-        throw new Error('فشل في الحذف');
-      }
+      await deleteProvider(id);
+      toast.success('تم حذف المقدم بنجاح');
+      fetchProviders();
     } catch (error) {
       toast.error('حدث خطأ أثناء الحذف');
     }

@@ -17,7 +17,7 @@ import {
   ChevronRight,
   Home as HomeIcon
 } from 'lucide-react';
-import { categoriesAPI } from '../services/api'; // Import the API service
+import { categoriesAPI, servicesAPI } from '../services/api'; // Import both APIs
 
 interface Category {
   id: string;
@@ -47,10 +47,14 @@ const Categories: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const categoriesData = await categoriesAPI.getAll();
+        const [categoriesData, servicesData] = await Promise.all([
+          categoriesAPI.getAll(),
+          servicesAPI.getAll()
+        ]);
         setCategories(categoriesData || []);
+        setServices(servicesData || []);
       } catch (error) {
-        console.error("Failed to fetch categories:", error);
+        console.error("Failed to fetch data for Categories page:", error);
         // Optionally set an error state to show in the UI
       } finally {
         setLoading(false);
