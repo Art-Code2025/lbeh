@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { AlertCircle, ChevronRight, Clock, MapPin, Calendar, Star, Shield, Award, Users } from 'lucide-react';
+import CustomBookingForm from '../components/CustomBookingForm';
 import 'react-toastify/dist/ReactToastify.css';
 
 interface Service {
@@ -18,25 +19,13 @@ interface Service {
   price: string;
 }
 
-interface BookingFormData {
-  fullName: string;
-  phoneNumber: string;
-  address: string;
-  serviceDetails: string;
-}
-
 export default function ServiceDetail() {
   const { id } = useParams();
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [bookingData, setBookingData] = useState<BookingFormData>({
-    fullName: '',
-    phoneNumber: '',
-    address: '',
-    serviceDetails: ''
-  });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -61,33 +50,28 @@ export default function ServiceDetail() {
     }
   };
 
-  const handleBookingSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!service) return;
-
+  const handleBookingSubmit = async (formData: any) => {
     try {
+      setSubmitting(true);
       const response = await fetch('/.netlify/functions/bookings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          serviceId: service.id,
-          serviceName: service.name,
-          serviceCategory: service.category,
-          ...bookingData
-        })
+        body: JSON.stringify(formData)
       });
 
       if (!response.ok) {
-        throw new Error('فشل في إرسال الحجز');
+        throw new Error('فشل في إرسال الطلب');
       }
 
-      toast.success('تم إرسال طلب الحجز بنجاح');
+      const result = await response.json();
+      toast.success('تم إرسال طلبك بنجاح! سيتم التواصل معك قريباً');
       setShowBookingModal(false);
     } catch (error: any) {
       toast.error(error.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -258,79 +242,32 @@ export default function ServiceDetail() {
         </div>
       </div>
 
-      {/* Booking Modal */}
+      {/* Custom Booking Modal */}
       {showBookingModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-2xl p-6 max-w-md w-full mx-4 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-white">حجز الخدمة</h3>
-              <button
-                onClick={() => setShowBookingModal(false)}
-                className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <AlertCircle className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-700">
+            <div className="sticky top-0 bg-gray-800 border-b border-gray-700 p-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-white">طلب خدمة: {service.name}</h3>
+                <button
+                  onClick={() => setShowBookingModal(false)}
+                  className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleBookingSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  الاسم الكامل
-                </label>
-                <input
-                  type="text"
-                  value={bookingData.fullName}
-                  onChange={(e) => setBookingData({ ...bookingData, fullName: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  رقم الجوال
-                </label>
-                <input
-                  type="tel"
-                  value={bookingData.phoneNumber}
-                  onChange={(e) => setBookingData({ ...bookingData, phoneNumber: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  العنوان
-                </label>
-                <input
-                  type="text"
-                  value={bookingData.address}
-                  onChange={(e) => setBookingData({ ...bookingData, address: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  تفاصيل إضافية
-                </label>
-                <textarea
-                  value={bookingData.serviceDetails}
-                  onChange={(e) => setBookingData({ ...bookingData, serviceDetails: e.target.value })}
-                  rows={4}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white resize-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold shadow-lg transition-all duration-200"
-              >
-                تأكيد الحجز
-              </button>
-            </form>
+            <div className="p-6">
+              <CustomBookingForm
+                serviceId={service.id.toString()}
+                serviceName={service.name}
+                category={service.category}
+                categoryName={service.categoryName}
+                onSubmit={handleBookingSubmit}
+                loading={submitting}
+              />
+            </div>
           </div>
         </div>
       )}

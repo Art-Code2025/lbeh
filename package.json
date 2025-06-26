@@ -11,7 +11,8 @@
     "preview": "cd frontend && npm run preview",
     "install-all": "npm install && cd frontend && npm install",
     "clean": "rm -rf node_modules frontend/node_modules frontend/dist",
-    "setup": "npm run install-all && npm run build"
+    "setup": "npm run install-all && npm run build",
+    "seed-firebase": "node seed-firebase.js"
   },
   "keywords": [
     "home-services",
