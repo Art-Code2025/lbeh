@@ -52,7 +52,9 @@ export const handler = async (event, context) => {
             completed: bookings.filter(b => b.status === 'completed').length,
             cancelled: bookings.filter(b => b.status === 'cancelled').length,
             byCategory: {},
-            byService: {}
+            byService: {},
+            categoryStats: [],
+            dailyStats: []
           };
 
           // Calculate category and service stats
@@ -64,6 +66,31 @@ export const handler = async (event, context) => {
               stats.byService[booking.serviceName] = (stats.byService[booking.serviceName] || 0) + 1;
             }
           });
+
+          const categoryCount = {};
+          const dailyCount = {};
+
+          bookings.forEach((booking) => {
+            // Count by category
+            const category = booking.category || 'أخرى';
+            categoryCount[category] = (categoryCount[category] || 0) + 1;
+            stats.byCategory[category] = (stats.byCategory[category] || 0) + 1;
+            
+            // Count by day
+            const date = new Date(booking.createdAt).toISOString().split('T')[0];
+            dailyCount[date] = (dailyCount[date] || 0) + 1;
+          });
+
+          // Convert to arrays for charts
+          stats.categoryStats = Object.entries(categoryCount).map(([category, count]) => ({
+            category,
+            count
+          }));
+
+          stats.dailyStats = Object.entries(dailyCount).map(([date, count]) => ({
+            date,
+            count
+          }));
 
           return {
             statusCode: 200,
@@ -103,7 +130,8 @@ export const handler = async (event, context) => {
           headers,
           body: JSON.stringify({ 
             id: docRef.id, 
-            message: 'Booking created successfully' 
+            message: 'تم إنشاء الحجز بنجاح! سيتم التواصل معك قريباً',
+            booking_id: docRef.id
           })
         };
 
@@ -121,7 +149,7 @@ export const handler = async (event, context) => {
           return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ message: 'Booking updated successfully' })
+            body: JSON.stringify({ message: 'تم تحديث الحجز بنجاح' })
           };
         }
         break;
@@ -135,7 +163,7 @@ export const handler = async (event, context) => {
           return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ message: 'Booking deleted successfully' })
+            body: JSON.stringify({ message: 'تم حذف الحجز بنجاح' })
           };
         }
         break;

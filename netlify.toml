@@ -2,21 +2,21 @@
   base = "frontend"
   command = "npm ci && npm run build"
   publish = "dist"
-  functions = "frontend/netlify/functions"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "18.20.8"
   NPM_VERSION = "10.2.3"
 
 [[redirects]]
-  from = "/.netlify/functions/*"
+  from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
-  from = "/api/*"
+  from = "/.netlify/functions/*"
   to = "/.netlify/functions/:splat"
   status = 200
   force = true
@@ -29,11 +29,11 @@
 
 [functions]
   node_bundler = "esbuild"
-  included_files = ["frontend/netlify/functions/**/*"]
+  external_node_modules = ["firebase-admin", "firebase"]
 
 [[headers]]
   for = "/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
-    Access-Control-Allow-Headers = "Content-Type" 
+    Access-Control-Allow-Headers = "*" 

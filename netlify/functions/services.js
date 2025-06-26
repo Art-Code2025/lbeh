@@ -1,6 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, query, where } from 'firebase/firestore';
-import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY || "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
@@ -13,231 +12,184 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const storage = getStorage(app);
-
-// Helper function to upload image to Firebase Storage
-async function uploadImageToStorage(base64Image, path) {
-  if (!base64Image) return null;
-  
-  try {
-    // Remove data URL prefix if present
-    const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
-    
-    // Create a reference to the storage location
-    const imageRef = ref(storage, `services/${path}`);
-    
-    // Upload the image
-    await uploadString(imageRef, base64Data, 'base64');
-    
-    // Get the download URL
-    const downloadURL = await getDownloadURL(imageRef);
-    return downloadURL;
-  } catch (error) {
-    console.error('Error uploading image:', error);
-    return null;
-  }
-}
 
 export const handler = async (event, context) => {
-  // Enable CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Content-Type': 'application/json'
   };
 
-  // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: ''
-    };
+    return { statusCode: 200, headers, body: '' };
+  }
+
+  if (event.httpMethod !== 'GET') {
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   try {
-    const servicesRef = collection(db, 'services');
-    const path = event.path.replace('/.netlify/functions/services', '');
-    const segments = path.split('/').filter(Boolean);
+    const pathParts = event.path.split('/');
+    const serviceId = pathParts[pathParts.length - 1];
+    
+    if (serviceId && serviceId !== 'services') {
+      // Get single category as service
+      const categoriesRef = collection(db, 'categories');
+      const snapshot = await getDocs(categoriesRef);
+      
+      let category = null;
+      snapshot.forEach((doc) => {
+        if (doc.id === serviceId) {
+          category = { id: doc.id, ...doc.data() };
+        }
+      });
 
-    switch (event.httpMethod) {
-      case 'GET':
-        // Get single service by ID
-        if (segments.length > 0) {
-          const serviceId = segments[0];
-          const serviceDoc = doc(db, 'services', serviceId);
-          const serviceSnapshot = await getDoc(serviceDoc);
-          
-          if (!serviceSnapshot.exists()) {
-            return {
-              statusCode: 404,
-              headers,
-              body: JSON.stringify({ error: 'Service not found' })
-            };
-          }
-          
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({
-              id: serviceSnapshot.id,
-              ...serviceSnapshot.data()
-            })
-          };
-        }
-        
-        // Get all services or filter by category
-        let servicesQuery = servicesRef;
-        if (event.queryStringParameters?.category) {
-          servicesQuery = query(servicesRef, where('category', '==', event.queryStringParameters.category));
-        }
-        
-        const snapshot = await getDocs(servicesQuery);
-        const services = [];
-        snapshot.forEach((doc) => {
-          services.push({
-            id: doc.id,
-            ...doc.data()
-          });
-        });
-        
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify(services)
-        };
+      if (!category) {
+        return { statusCode: 404, headers, body: JSON.stringify({ error: 'Service not found' }) };
+      }
 
-      case 'POST':
-        const newService = JSON.parse(event.body);
-        
-        // Handle main image upload
-        if (newService.mainImage && newService.mainImage.startsWith('data:image')) {
-          const mainImageUrl = await uploadImageToStorage(
-            newService.mainImage,
-            `${Date.now()}-main.jpg`
-          );
-          if (mainImageUrl) {
-            newService.mainImage = mainImageUrl;
-          }
-        }
-        
-        // Handle detailed images upload
-        if (Array.isArray(newService.detailedImages)) {
-          const uploadPromises = newService.detailedImages.map(async (image, index) => {
-            if (image && image.startsWith('data:image')) {
-              return await uploadImageToStorage(
-                image,
-                `${Date.now()}-detail-${index}.jpg`
-              );
-            }
-            return image;
-          });
-          
-          newService.detailedImages = await Promise.all(uploadPromises);
-          newService.detailedImages = newService.detailedImages.filter(url => url);
-        }
-        
-        const docRef = await addDoc(servicesRef, {
-          ...newService,
-          createdAt: new Date().toISOString()
-        });
-        
-        return {
-          statusCode: 201,
-          headers,
-          body: JSON.stringify({ 
-            id: docRef.id, 
-            message: 'Service created successfully' 
-          })
-        };
+      const service = {
+        id: category.id,
+        name: category.name,
+        category: category.id,
+        categoryName: category.name,
+        description: getDetailedDescription(category.id),
+        mainImage: getDefaultImage(category.id),
+        detailedImages: [getDefaultImage(category.id)],
+        features: getDefaultFeatures(category.id),
+        duration: getDefaultDuration(category.id),
+        availability: "متاح 24/7",
+        price: getDefaultPrice(category.id)
+      };
 
-      case 'PUT':
-        if (segments.length === 0) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Service ID is required' })
-          };
-        }
-
-        const serviceId = segments[0];
-        const updateData = JSON.parse(event.body);
-        
-        // Handle main image update
-        if (updateData.mainImage && updateData.mainImage.startsWith('data:image')) {
-          const mainImageUrl = await uploadImageToStorage(
-            updateData.mainImage,
-            `${Date.now()}-main.jpg`
-          );
-          if (mainImageUrl) {
-            updateData.mainImage = mainImageUrl;
-          }
-        }
-        
-        // Handle detailed images update
-        if (Array.isArray(updateData.detailedImages)) {
-          const uploadPromises = updateData.detailedImages.map(async (image, index) => {
-            if (image && image.startsWith('data:image')) {
-              return await uploadImageToStorage(
-                image,
-                `${Date.now()}-detail-${index}.jpg`
-              );
-            }
-            return image;
-          });
-          
-          updateData.detailedImages = await Promise.all(uploadPromises);
-          updateData.detailedImages = updateData.detailedImages.filter(url => url);
-        }
-        
-        const serviceDoc = doc(db, 'services', serviceId);
-        await updateDoc(serviceDoc, {
-          ...updateData,
-          updatedAt: new Date().toISOString()
-        });
-        
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({ message: 'Service updated successfully' })
-        };
-
-      case 'DELETE':
-        if (segments.length === 0) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Service ID is required' })
-          };
-        }
-
-        const deleteId = segments[0];
-        const deleteServiceDoc = doc(db, 'services', deleteId);
-        await deleteDoc(deleteServiceDoc);
-        
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({ message: 'Service deleted successfully' })
-        };
-
-      default:
-        return {
-          statusCode: 405,
-          headers,
-          body: JSON.stringify({ error: 'Method not allowed' })
-        };
+      return { statusCode: 200, headers, body: JSON.stringify(service) };
     }
+
+    // Get all categories as services
+    const categoriesRef = collection(db, 'categories');
+    const snapshot = await getDocs(categoriesRef);
+    const services = [];
+    
+    snapshot.forEach((doc) => {
+      const category = doc.data();
+      services.push({
+        id: doc.id,
+        name: category.name,
+        category: doc.id,
+        categoryName: category.name,
+        homeShortDescription: category.description,
+        detailsShortDescription: category.description,
+        description: getDetailedDescription(doc.id),
+        mainImage: getDefaultImage(doc.id),
+        detailedImages: [getDefaultImage(doc.id)],
+        imageDetails: [category.description],
+        features: getDefaultFeatures(doc.id),
+        duration: getDefaultDuration(doc.id),
+        availability: "متاح 24/7",
+        price: getDefaultPrice(doc.id)
+      });
+    });
+
+    return { statusCode: 200, headers, body: JSON.stringify(services) };
   } catch (error) {
     console.error('Error:', error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
-        error: 'Internal server error',
-        details: error.message 
-      })
+      body: JSON.stringify({ error: 'Internal server error', details: error.message })
     };
   }
-}; 
+};
+
+function getDefaultImage(categoryId) {
+  const images = {
+    'internal_delivery': 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55?w=500',
+    'external_trips': 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=500',
+    'home_maintenance': 'https://images.unsplash.com/photo-1585128792020-803d29415281?w=500'
+  };
+  return images[categoryId] || 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=500';
+}
+
+function getDefaultPrice(categoryId) {
+  const prices = {
+    'internal_delivery': '20 ريال',
+    'external_trips': '250-300 ريال',
+    'home_maintenance': 'حسب نوع الخدمة'
+  };
+  return prices[categoryId] || 'حسب المتطلبات';
+}
+
+function getDefaultDuration(categoryId) {
+  const durations = {
+    'internal_delivery': '30-60 دقيقة',
+    'external_trips': 'حتى 9 ساعات',
+    'home_maintenance': '1-3 ساعات'
+  };
+  return durations[categoryId] || '1-2 ساعة';
+}
+
+function getDefaultFeatures(categoryId) {
+  const features = {
+    'internal_delivery': [
+      'توصيل سريع داخل المدينة',
+      'خدمة متاحة 24/7',
+      'أسعار مناسبة ومنافسة',
+      'إمكانية التوصيل العاجل'
+    ],
+    'external_trips': [
+      'رحلات آمنة ومريحة',
+      'سائقون محترفون',
+      'مركبات حديثة',
+      'حد أقصى 9 ساعات'
+    ],
+    'home_maintenance': [
+      'فنيون مهرة ومتخصصون',
+      'قطع غيار أصلية',
+      'ضمان على الخدمة',
+      'استشارة مجانية'
+    ]
+  };
+  return features[categoryId] || ['خدمة احترافية', 'جودة عالية', 'أسعار منافسة'];
+}
+
+function getDetailedDescription(categoryId) {
+  const descriptions = {
+    'internal_delivery': `خدمات التوصيل الداخلي السريع والموثوق داخل المدينة. نوفر لك حلول التوصيل لجميع احتياجاتك اليومية بسرعة وكفاءة عالية.
+
+خدماتنا تشمل:
+• توصيل الأدوية والمستلزمات الطبية
+• توصيل المشتريات والبقالة
+• توصيل الوجبات والطعام
+• المشاوير السريعة والطارئة
+• توصيل الوثائق المهمة
+
+مع فريق متخصص وأساليب حديثة لضمان وصول طلبك بأمان وفي الوقت المحدد.`,
+
+    'external_trips': `رحلات خارجية مريحة وآمنة إلى خميس مشيط وأبها والمناطق المجاورة. خدماتنا مصممة لتلبية احتياجاتك في الرحلات الطبية والعائلية والتجارية.
+
+خدماتنا تشمل:
+• رحلات إلى خميس مشيط (250 ريال)
+• رحلات إلى أبها (300 ريال)
+• رحلات المستشفيات والعيادات
+• رحلات المناسبات العائلية
+• رحلات العمل والتجارة
+• إمكانية الذهاب والإياب
+
+مع سائقين محترفين ومركبات مريحة لضمان رحلة آمنة وممتعة.`,
+
+    'home_maintenance': `خدمات الصيانة المنزلية الشاملة على يد فنيين متخصصين. نحل جميع مشاكل منزلك من السباكة والكهرباء إلى الدهانات والترميم.
+
+خدماتنا تشمل:
+• السباكة وإصلاح التسريبات
+• الأعمال الكهربائية والإضاءة
+• الدهانات والديكور
+• صيانة الأجهزة المنزلية
+• أعمال البلاط والسيراميك
+• إصلاح النوافذ والأبواب
+
+فريق متخصص يستخدم قطع غيار أصلية مع ضمان شامل على جميع الأعمال.`
+  };
+  
+  return descriptions[categoryId] || 'خدمة متخصصة بأعلى معايير الجودة والاحترافية.';
+} 
