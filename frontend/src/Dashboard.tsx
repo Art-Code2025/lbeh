@@ -46,7 +46,8 @@ import {
   MessageCircle,
   Bell,
   Volume2,
-  VolumeX
+  VolumeX,
+  Database
 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { Bar, Pie, Doughnut, Line } from 'react-chartjs-2';
@@ -57,6 +58,7 @@ import CategoryModal from './components/CategoryModal';
 import ServiceModal from './components/ServiceModal';
 import ProvidersModal from './components/ProvidersModal';
 import ProvidersManagement from './components/ProvidersManagement';
+import FirebaseDebugPanel from './components/FirebaseDebugPanel';
 import { useRealTimeBookings } from './hooks/useRealTimeBookings';
 import {
   BarChart,
@@ -65,70 +67,36 @@ import {
   CartesianGrid,
   ResponsiveContainer
 } from 'recharts';
+import { 
+  categoriesAPI,
+  servicesAPI,
+  testFirebaseConnection
+} from './services/api';
+import { bookingsAPI } from './services/bookingsApi';
+import { fetchProviders } from './services/providersApi';
+import { seedOnlyMissingData, clearAllCollections, seedFirebaseData } from './utils/seedFirebase';
+
+// Types from APIs
+import type { Booking, BookingStats } from './services/bookingsApi';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement);
 
-// تعريف الواجهات
+// Local Dashboard types - only for non-API types
 interface Service {
   id: number;
   name: string;
   category: string;
   categoryName: string;
   homeShortDescription: string;
-  detailsShortDescription: string;
-  description: string;
-  mainImage: string;
-  detailedImages: string[];
-  imageDetails: string[];
-  features: string[];
+  detailsShortDescription?: string;
+  description?: string;
+  mainImage?: string;
+  detailedImages?: string[];
+  imageDetails?: string[];
+  features?: string[];
   duration?: string;
   availability?: string;
   price?: string;
-}
-
-interface Booking {
-  id: string;
-  serviceId: string;
-  serviceName: string;
-  serviceCategory: string;
-  fullName: string;
-  phoneNumber: string;
-  address: string;
-  serviceDetails: string;
-  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
-  createdAt: string;
-  updatedAt: string;
-  // بيانات إضافية حسب الفئة
-  deliveryLocation?: string;
-  urgentDelivery?: boolean;
-  startLocation?: string;
-  destination?: string;
-  destinationType?: string;
-  appointmentTime?: string;
-  returnTrip?: boolean;
-  passengers?: number;
-  issueDescription?: string;
-  urgencyLevel?: string;
-  preferredTime?: string;
-}
-
-interface BookingStats {
-  total: number;
-  pending: number;
-  confirmed: number;
-  inProgress: number;
-  completed: number;
-  cancelled: number;
-  byCategory: Record<string, number>;
-  byService: Record<string, number>;
-  categoryStats: {
-    category: string;
-    count: number;
-  }[];
-  dailyStats: {
-    date: string;
-    count: number;
-  }[];
 }
 
 interface Category {
@@ -137,30 +105,58 @@ interface Category {
   description: string;
   icon: string;
   color: string;
-  serviceCount: number;
+  serviceCount?: number;
+  createdAt?: string;
+}
+
+interface Provider {
+  id: string;
+  name: string;
+  category: 'internal_delivery' | 'external_trips' | 'home_maintenance';
+  phone: string;
+  whatsapp: string;
+  services: string[];
+  rating: number;
+  available: boolean;
+  specialties: string[];
+  destinations: string[];
 }
 
 const ITEMS_PER_PAGE = 10;
 
 function Dashboard() {
   const [services, setServices] = useState<Service[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [stats, setStats] = useState<BookingStats | null>(null);
+  const [stats, setStats] = useState<BookingStats>({
+    total: 0,
+    pending: 0,
+    confirmed: 0,
+    inProgress: 0,
+    completed: 0,
+    cancelled: 0,
+    byCategory: {},
+    byService: {},
+    categoryStats: [],
+    dailyStats: []
+  });
+  const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'services' | 'bookings' | 'categories' | 'providers'>('overview');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [bookingFilter, setBookingFilter] = useState<string>('all');
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [editingService, setEditingService] = useState<Service | null>(null);
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showServiceModal, setShowServiceModal] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedStatus, setSelectedStatus] = useState<'all' | 'pending' | 'completed' | 'cancelled'>('all');
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showProvidersModal, setShowProvidersModal] = useState(false);
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showProvidersManagement, setShowProvidersManagement] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'services' | 'categories' | 'bookings' | 'providers'>('overview');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Real-time updates state
   const [realTimeEnabled, setRealTimeEnabled] = useState(true);
@@ -173,48 +169,52 @@ function Dashboard() {
   const navigate = useNavigate();
 
   // Use real-time bookings hook
-  const { bookings: realTimeBookings, newBookingAlert: realTimeNewBookingAlert, refetch } = useRealTimeBookings({
-    enabled: realTimeEnabled,
-    soundEnabled: soundEnabled,
-    onNewBooking: (booking) => {
-      // يمكن إضافة المزيد من الإجراءات هنا
-      fetchStats(); // تحديث الإحصائيات
-    }
+  const { 
+    bookings: realTimeBookings, 
+    newBookingAlert: realTimeNewBookingAlert, 
+    refetch: refetchBookings 
+  } = useRealTimeBookings({ 
+    enabled: activeTab === 'bookings' || activeTab === 'overview',
+    soundEnabled: true 
   });
 
-  const categories: Category[] = [
-    {
-      id: 'daily_services',
-      name: 'الخدمات اليومية / المشاوير الداخلية',
-      description: 'خدمات التوصيل والمشاوير اليومية داخل المدينة',
-      icon: '🚚',
-      color: 'blue',
-      serviceCount: services.filter(s => s.category === 'daily_services').length
-    },
-    {
-      id: 'external_errands',
-      name: 'المشاوير الخارجية',
-      description: 'المشاوير والتوصيل للمسافات البعيدة بين المدن',
-      icon: '🗺️',
-      color: 'green',
-      serviceCount: services.filter(s => s.category === 'external_errands').length
-    },
-    {
-      id: 'home_maintenance',
-      name: 'الأعمال المنزلية والفنية',
-      description: 'خدمات الصيانة والإصلاح المنزلي المتخصصة',
-      icon: '🔧',
-      color: 'orange',
-      serviceCount: services.filter(s => s.category === 'home_maintenance').length
-    }
-  ];
-
+  // Update bookings when real-time data changes
   useEffect(() => {
-    fetchServices();
-    fetchBookings();
-    fetchStats();
+    if (realTimeBookings.length > 0) {
+      setBookings(realTimeBookings);
+    }
+  }, [realTimeBookings]);
+
+  // Firebase connection test and seed data
+  useEffect(() => {
+    const initializeFirebase = async () => {
+      try {
+        console.log('🔥 Testing Firebase connection...');
+        const isConnected = await testFirebaseConnection();
+        if (!isConnected) {
+          toast.error('مشكلة في الاتصال بقاعدة البيانات');
+          return;
+        }
+        
+        // Check and add missing data
+        console.log('🔍 Checking for missing data in Firebase...');
+        await seedOnlyMissingData();
+        
+      } catch (error) {
+        console.error('Error initializing Firebase:', error);
+        toast.error('مشكلة في إعداد قاعدة البيانات');
+      }
+    };
+    
+    initializeFirebase();
   }, []);
 
+  // Load initial data
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  // Filter bookings effect
   useEffect(() => {
     let filtered = bookings;
     
@@ -230,134 +230,135 @@ function Dashboard() {
       );
     }
     
-    setBookings(filtered);
+    // Note: No need to set filteredBookings state, we'll filter inline
   }, [bookings, bookingFilter, searchTerm]);
+
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([
+        fetchCategories(),
+        fetchServices(),
+        fetchBookings(),
+        fetchStats(),
+        fetchProvidersData()
+      ]);
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+      toast.error('فشل في تحميل البيانات');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const data = await categoriesAPI.getAll();
+      // Transform to match local interface
+      const transformedCategories: Category[] = data.map(cat => ({
+        ...cat,
+        serviceCount: services.filter(s => s.category === cat.id).length
+      }));
+      setCategories(transformedCategories);
+      console.log('📁 Categories loaded:', data.length);
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+      toast.error('فشل في تحميل الفئات');
+    }
+  };
 
   const fetchServices = async () => {
     try {
-      const response = await fetch('/.netlify/functions/services');
-      if (!response.ok) {
-        throw new Error('فشل في جلب الخدمات');
-      }
-      const data = await response.json();
-      setServices(data);
-    } catch (error: any) {
-      setError(error.message);
-      toast.error(error.message);
+      const data = await servicesAPI.getAll();
+      // Transform to match local interface
+      const transformedServices: Service[] = data.map(service => ({
+        ...service,
+        detailsShortDescription: service.homeShortDescription || '',
+        description: service.homeShortDescription || '',
+        detailedImages: [],
+        imageDetails: [],
+        features: []
+      }));
+      setServices(transformedServices);
+      console.log('🛠️ Services loaded:', data.length);
+    } catch (error) {
+      console.error('Failed to fetch services:', error);
+      toast.error('فشل في تحميل الخدمات');
     }
   };
 
   const fetchBookings = async () => {
     try {
-      // First try Netlify Functions
-      try {
-        const response = await fetch('/.netlify/functions/bookings');
-        if (response.ok) {
-          const data = await response.json();
-          setBookings(data);
-          return;
-        }
-      } catch (netlifyError) {
-        console.log('Netlify Functions not available, using Firebase directly...');
-      }
-
-      // Fallback to Firebase direct access
-      const { initializeApp } = await import('firebase/app');
-      const { getFirestore, collection, getDocs, query, orderBy } = await import('firebase/firestore');
-      
-      const firebaseConfig = {
-        apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
-        authDomain: "lbeh-81936.firebaseapp.com",
-        projectId: "lbeh-81936",
-        storageBucket: "lbeh-81936.firebasestorage.app",
-        messagingSenderId: "225834423678",
-        appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
-      };
-
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      
-      const bookingsRef = collection(db, 'bookings');
-      const q = query(bookingsRef, orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      
-      const data: Booking[] = [];
-      snapshot.forEach((doc) => {
-        data.push({
-          id: doc.id,
-          ...doc.data()
-        } as Booking);
-      });
-
+      const data = await bookingsAPI.getAll();
       setBookings(data);
-    } catch (error: any) {
-      console.error('Error fetching bookings:', error);
-      toast.error('فشل في جلب الحجوزات');
+      console.log('📋 Bookings loaded:', data.length);
+    } catch (error) {
+      console.error('Failed to fetch bookings:', error);
+      toast.error('فشل في تحميل الحجوزات');
     }
   };
 
   const fetchStats = async () => {
     try {
-      // First try Netlify Functions
-      try {
-        const response = await fetch('/.netlify/functions/booking-stats');
-        if (response.ok) {
-          const data = await response.json();
-          setStats(data);
-          return;
-        }
-      } catch (netlifyError) {
-        console.log('Netlify Functions not available for stats, calculating from bookings...');
-      }
+      const data = await bookingsAPI.getStats();
+      setStats(data);
+      console.log('📊 Stats loaded:', data);
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+      toast.error('فشل في تحميل الإحصائيات');
+    }
+  };
 
-      // Fallback: calculate stats from bookings data if we have it
-      if (bookings.length > 0) {
-        const stats: BookingStats = {
-          total: bookings.length,
-          pending: bookings.filter(b => b.status === 'pending').length,
-          confirmed: bookings.filter(b => b.status === 'confirmed').length,
-          inProgress: bookings.filter(b => b.status === 'in_progress').length,
-          completed: bookings.filter(b => b.status === 'completed').length,
-          cancelled: bookings.filter(b => b.status === 'cancelled').length,
-          byCategory: {},
-          byService: {},
-          categoryStats: [],
-          dailyStats: []
-        };
+  const fetchProvidersData = async () => {
+    try {
+      const data = await fetchProviders();
+      setProviders(data);
+      console.log('👥 Providers loaded:', data.length);
+    } catch (error) {
+      console.error('Failed to fetch providers:', error);
+      toast.error('فشل في تحميل مقدمي الخدمات');
+    }
+  };
 
-        // Calculate category stats
-        bookings.forEach(booking => {
-          if (booking.serviceCategory) {
-            stats.byCategory[booking.serviceCategory] = (stats.byCategory[booking.serviceCategory] || 0) + 1;
-          }
-          if (booking.serviceName) {
-            stats.byService[booking.serviceName] = (stats.byService[booking.serviceName] || 0) + 1;
-          }
-        });
+  // Seed data functions
+  const handleSeedMissingData = async () => {
+    try {
+      setLoading(true);
+      toast.info('🔄 جاري فحص وإضافة البيانات الأساسية...');
+      
+      const result = await seedOnlyMissingData();
+      toast.success('✅ تم فحص البيانات الأساسية بنجاح!');
+      
+      // Refresh all data
+      await loadInitialData();
+    } catch (error) {
+      console.error('Error seeding missing data:', error);
+      toast.error('❌ فشل في إضافة البيانات');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        // Convert to arrays for charts
-        stats.categoryStats = Object.entries(stats.byCategory).map(([category, count]) => ({
-          category,
-          count
-        }));
-
-        // Calculate daily stats (last 7 days)
-        const dailyCount: Record<string, number> = {};
-        bookings.forEach((booking) => {
-          const date = new Date(booking.createdAt).toISOString().split('T')[0];
-          dailyCount[date] = (dailyCount[date] || 0) + 1;
-        });
-
-        stats.dailyStats = Object.entries(dailyCount).map(([date, count]) => ({
-          date,
-          count
-        }));
-
-        setStats(stats);
-      }
-    } catch (error: any) {
-      console.error('Error fetching stats:', error);
-      toast.error('فشل في جلب الإحصائيات');
+  const handleClearAndSeedData = async () => {
+    if (!window.confirm('⚠️ هذا سيحذف جميع البيانات الحالية ويضيف البيانات الأساسية فقط. هل أنت متأكد؟')) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      toast.info('🗑️ جاري حذف البيانات الحالية...');
+      
+      await clearAllCollections();
+      toast.info('🌱 جاري إضافة البيانات الأساسية...');
+      
+      const result = await seedFirebaseData();
+      toast.success(`🎉 تم إنشاء البيانات الأساسية بنجاح! الفئات: ${result.categories}, الخدمات: ${result.services}, المقدمين: ${result.providers}`);
+      
+      // Refresh all data
+      await loadInitialData();
+    } catch (error) {
+      console.error('Error clearing and seeding data:', error);
+      toast.error('❌ فشل في إنشاء البيانات');
     } finally {
       setLoading(false);
     }
@@ -368,63 +369,21 @@ function Dashboard() {
       return;
     }
     try {
-      const response = await fetch(`/.netlify/functions/services/${id}`, {
-        method: 'DELETE'
-      });
-      if (!response.ok) {
-        throw new Error('فشل في حذف الخدمة');
-      }
+      await servicesAPI.delete(id.toString());
       toast.success('تم حذف الخدمة بنجاح');
-      fetchServices();
+      await fetchServices();
     } catch (error: any) {
-      toast.error(error.message);
+      console.error('Error deleting service:', error);
+      toast.error('فشل في حذف الخدمة');
     }
   };
 
   const handleBookingStatusUpdate = async (bookingId: string, newStatus: Booking['status']) => {
     try {
-      // First try Netlify Functions
-      try {
-        const response = await fetch(`/.netlify/functions/bookings/${bookingId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ status: newStatus })
-        });
-        if (response.ok) {
-          toast.success('تم تحديث حالة الحجز بنجاح');
-          fetchBookings();
-          return;
-        }
-      } catch (netlifyError) {
-        console.log('Netlify Functions not available, using Firebase directly...');
-      }
-
-      // Fallback to Firebase direct access
-      const { initializeApp } = await import('firebase/app');
-      const { getFirestore, doc, updateDoc } = await import('firebase/firestore');
-      
-      const firebaseConfig = {
-        apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
-        authDomain: "lbeh-81936.firebaseapp.com",
-        projectId: "lbeh-81936",
-        storageBucket: "lbeh-81936.firebasestorage.app",
-        messagingSenderId: "225834423678",
-        appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
-      };
-
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      
-      const bookingDoc = doc(db, 'bookings', bookingId);
-      await updateDoc(bookingDoc, {
-        status: newStatus,
-        updatedAt: new Date().toISOString()
-      });
-
+      await bookingsAPI.updateStatus(bookingId, newStatus);
       toast.success('تم تحديث حالة الحجز بنجاح');
-      fetchBookings();
+      await fetchBookings();
+      await fetchStats();
     } catch (error: any) {
       console.error('Error updating booking status:', error);
       toast.error('فشل في تحديث حالة الحجز');
@@ -432,42 +391,15 @@ function Dashboard() {
   };
 
   const handleBookingDelete = async (bookingId: string) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا الحجز؟')) {
+      return;
+    }
+    
     try {
-      // First try Netlify Functions
-      try {
-        const response = await fetch(`/.netlify/functions/bookings/${bookingId}`, {
-          method: 'DELETE'
-        });
-        if (response.ok) {
-          toast.success('تم حذف الحجز بنجاح');
-          fetchBookings();
-          return;
-        }
-      } catch (netlifyError) {
-        console.log('Netlify Functions not available, using Firebase directly...');
-      }
-
-      // Fallback to Firebase direct access
-      const { initializeApp } = await import('firebase/app');
-      const { getFirestore, doc, deleteDoc } = await import('firebase/firestore');
-      
-      const firebaseConfig = {
-        apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
-        authDomain: "lbeh-81936.firebaseapp.com",
-        projectId: "lbeh-81936",
-        storageBucket: "lbeh-81936.firebasestorage.app",
-        messagingSenderId: "225834423678",
-        appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
-      };
-
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      
-      const bookingDoc = doc(db, 'bookings', bookingId);
-      await deleteDoc(bookingDoc);
-
+      await bookingsAPI.delete(bookingId);
       toast.success('تم حذف الحجز بنجاح');
-      fetchBookings();
+      await fetchBookings();
+      await fetchStats();
     } catch (error: any) {
       console.error('Error deleting booking:', error);
       toast.error('فشل في حذف الحجز');
@@ -639,12 +571,28 @@ function Dashboard() {
     setShowProvidersModal(true);
   };
 
-  const filteredBookings = selectedStatus === 'all'
-    ? bookings
-    : bookings.filter(booking => booking.status === selectedStatus);
+  // Get filtered bookings
+  const getFilteredBookings = () => {
+    let filtered = bookings;
+    
+    if (selectedStatus !== 'all') {
+      filtered = filtered.filter(booking => booking.status === selectedStatus);
+    }
+    
+    if (searchTerm) {
+      filtered = filtered.filter(booking =>
+        booking.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.serviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.phoneNumber.includes(searchTerm)
+      );
+    }
+    
+    return filtered;
+  };
 
-  const totalPages = Math.ceil(filteredBookings.length / ITEMS_PER_PAGE);
-  const paginatedBookings = filteredBookings.slice(
+  const filteredBookingsList = getFilteredBookings();
+  const totalPages = Math.ceil(filteredBookingsList.length / ITEMS_PER_PAGE);
+  const paginatedBookings = filteredBookingsList.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -681,16 +629,16 @@ function Dashboard() {
   return (
     <div dir="rtl" className="min-h-screen bg-gray-900 text-white">
       {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
+      {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <div className={`fixed top-0 right-0 h-full w-80 bg-gray-800 border-l border-gray-700 transform transition-transform duration-300 ease-in-out z-50 ${
-        sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
+        isSidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
       }`}>
         <div className="flex flex-col h-full">
           {/* Header */}
@@ -706,7 +654,7 @@ function Dashboard() {
                 </div>
               </div>
               <button
-                onClick={() => setSidebarOpen(false)}
+                onClick={() => setIsSidebarOpen(false)}
                 className="lg:hidden p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -727,7 +675,7 @@ function Dashboard() {
                 key={id}
                 onClick={() => {
                   setActiveTab(id as any);
-                  setSidebarOpen(false);
+                  setIsSidebarOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
                   activeTab === id
@@ -746,6 +694,27 @@ function Dashboard() {
 
           {/* Real-time Controls */}
           <div className="px-4 pb-4 space-y-2">
+            {/* Data Management */}
+            <div className="p-3 bg-gray-700 rounded-xl space-y-2">
+              <h3 className="text-sm font-medium text-gray-200">إدارة البيانات</h3>
+              <button
+                onClick={handleSeedMissingData}
+                disabled={loading}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors border border-blue-500/30 disabled:opacity-50"
+              >
+                <Database className="w-3 h-3" />
+                فحص وإضافة البيانات
+              </button>
+              <button
+                onClick={handleClearAndSeedData}
+                disabled={loading}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs bg-orange-500/20 text-orange-400 rounded-lg hover:bg-orange-500/30 transition-colors border border-orange-500/30 disabled:opacity-50"
+              >
+                <RefreshCw className="w-3 h-3" />
+                إعادة إنشاء البيانات
+              </button>
+            </div>
+
             <div className="flex items-center justify-between p-3 bg-gray-700 rounded-xl">
               <span className="text-sm text-gray-300">التحديث المباشر</span>
               <button
@@ -802,7 +771,7 @@ function Dashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => setSidebarOpen(true)}
+                onClick={() => setIsSidebarOpen(true)}
                 className="lg:hidden p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
               >
                 <Menu className="w-5 h-5" />
@@ -924,6 +893,11 @@ function Dashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* Firebase Debug Panel */}
+              <FirebaseDebugPanel
+                onDataChange={loadInitialData}
+              />
             </>
           )}
 
@@ -1236,8 +1210,8 @@ function Dashboard() {
                   <div className="flex items-center justify-between px-6 py-4 border-t border-gray-700">
                     <div className="text-sm text-gray-400">
                       عرض {(currentPage - 1) * ITEMS_PER_PAGE + 1} إلى{' '}
-                      {Math.min(currentPage * ITEMS_PER_PAGE, filteredBookings.length)} من{' '}
-                      {filteredBookings.length} حجز
+                      {Math.min(currentPage * ITEMS_PER_PAGE, filteredBookingsList.length)} من{' '}
+                      {filteredBookingsList.length} حجز
                     </div>
                     <div className="flex gap-2">
                       <button
