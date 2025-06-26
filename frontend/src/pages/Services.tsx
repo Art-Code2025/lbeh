@@ -126,15 +126,68 @@ function Services() {
   const fetchServices = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/.netlify/functions/services');
-      if (!response.ok) {
-        throw new Error('فشل في جلب الخدمات');
+      
+      // First try Netlify Functions
+      try {
+        const response = await fetch('/.netlify/functions/services');
+        if (response.ok) {
+          const data = await response.json();
+          setServices(data || []);
+          
+          // تجميع الخدمات حسب الفئات
+          const categories = groupServicesByCategory(data || []);
+          setServiceCategories(categories);
+          return;
+        }
+      } catch (netlifyError) {
+        console.log('Netlify Functions not available, using Firebase directly...');
       }
-      const data = await response.json();
-      setServices(data || []);
+
+      // Fallback to Firebase direct access
+      const { initializeApp } = await import('firebase/app');
+      const { getFirestore, collection, getDocs } = await import('firebase/firestore');
+      
+      const firebaseConfig = {
+        apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
+        authDomain: "lbeh-81936.firebaseapp.com",
+        projectId: "lbeh-81936",
+        storageBucket: "lbeh-81936.firebasestorage.app",
+        messagingSenderId: "225834423678",
+        appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      
+      // Get all categories as services
+      const categoriesRef = collection(db, 'categories');
+      const snapshot = await getDocs(categoriesRef);
+      const services: any[] = [];
+      
+      snapshot.forEach((doc) => {
+        const category = doc.data();
+        services.push({
+          id: doc.id,
+          name: category.name,
+          category: doc.id,
+          categoryName: category.name,
+          homeShortDescription: category.description,
+          detailsShortDescription: category.description,
+          description: getDetailedDescription(doc.id),
+          mainImage: getDefaultImage(doc.id),
+          detailedImages: [getDefaultImage(doc.id)],
+          imageDetails: [category.description],
+          features: getDefaultFeatures(doc.id),
+          duration: getDefaultDuration(doc.id),
+          availability: "متاح 24/7",
+          price: getDefaultPrice(doc.id)
+        });
+      });
+
+      setServices(services || []);
       
       // تجميع الخدمات حسب الفئات
-      const categories = groupServicesByCategory(data || []);
+      const categories = groupServicesByCategory(services || []);
       setServiceCategories(categories);
       
     } catch (error: any) {
@@ -144,6 +197,52 @@ function Services() {
       setLoading(false);
     }
   };
+
+  // Helper functions (same as in Netlify Functions)
+  function getDefaultImage(categoryId: string) {
+    const images: Record<string, string> = {
+      'internal_delivery': 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55?w=500',
+      'external_trips': 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=500',
+      'home_maintenance': 'https://images.unsplash.com/photo-1585128792020-803d29415281?w=500'
+    };
+    return images[categoryId] || 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=500';
+  }
+
+  function getDetailedDescription(categoryId: string) {
+    const descriptions: Record<string, string> = {
+      'internal_delivery': 'خدمات التوصيل السريعة داخل المدينة مع ضمان الوصول في الوقت المحدد. نوفر خدمات توصيل البقالة، الأدوية، والوثائق بأمان تام.',
+      'external_trips': 'رحلات آمنة ومريحة للمسافات البعيدة مع سائقين محترفين. نغطي جميع المحافظات مع إمكانية الحجز المسبق والرحلات العاجلة.',
+      'home_maintenance': 'خدمات صيانة شاملة للمنازل والمكاتب مع فنيين متخصصين. نقدم خدمات السباكة، الكهرباء، التكييف، والدهانات بضمان الجودة.'
+    };
+    return descriptions[categoryId] || 'خدمة متميزة بجودة عالية';
+  }
+
+  function getDefaultFeatures(categoryId: string) {
+    const features: Record<string, string[]> = {
+      'internal_delivery': ['توصيل سريع خلال ساعة', 'خدمة 24/7', 'تتبع الطلب مباشر', 'ضمان الأمان'],
+      'external_trips': ['سائقين محترفين', 'سيارات حديثة ومريحة', 'أسعار تنافسية', 'رحلات آمنة'],
+      'home_maintenance': ['فنيين معتمدين', 'ضمان على الخدمة', 'قطع غيار أصلية', 'خدمة طوارئ']
+    };
+    return features[categoryId] || ['خدمة عالية الجودة', 'أسعار مناسبة', 'ضمان الرضا'];
+  }
+
+  function getDefaultDuration(categoryId: string) {
+    const durations: Record<string, string> = {
+      'internal_delivery': '30-60 دقيقة',
+      'external_trips': '2-8 ساعات',
+      'home_maintenance': '1-4 ساعات'
+    };
+    return durations[categoryId] || '1-2 ساعة';
+  }
+
+  function getDefaultPrice(categoryId: string) {
+    const prices: Record<string, string> = {
+      'internal_delivery': 'من 20 ريال',
+      'external_trips': 'من 250 ريال',
+      'home_maintenance': 'حسب الخدمة'
+    };
+    return prices[categoryId] || 'حسب الطلب';
+  }
 
   // تجميع الخدمات حسب الفئات
   const groupServicesByCategory = (services: Service[]): ServiceCategory[] => {

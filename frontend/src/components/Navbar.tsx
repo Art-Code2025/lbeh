@@ -13,11 +13,38 @@ const Navbar: React.FC = () => {
 
   const fetchServicesCount = async () => {
     try {
-      const response = await fetch('/.netlify/functions/services');
-      if (response.ok) {
-        const services = await response.json();
-        setServicesCount(services.length);
+      // First try Netlify Functions
+      try {
+        const response = await fetch('/.netlify/functions/services');
+        if (response.ok) {
+          const services = await response.json();
+          setServicesCount(services.length);
+          return;
+        }
+      } catch (netlifyError) {
+        console.log('Netlify Functions not available, using Firebase directly...');
       }
+
+      // Fallback to Firebase direct access
+      const { initializeApp } = await import('firebase/app');
+      const { getFirestore, collection, getDocs } = await import('firebase/firestore');
+      
+      const firebaseConfig = {
+        apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
+        authDomain: "lbeh-81936.firebaseapp.com",
+        projectId: "lbeh-81936",
+        storageBucket: "lbeh-81936.firebasestorage.app",
+        messagingSenderId: "225834423678",
+        appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      
+      const categoriesRef = collection(db, 'categories');
+      const snapshot = await getDocs(categoriesRef);
+      
+      setServicesCount(snapshot.size); // عدد الفئات كخدمات
     } catch (error) {
       console.error('Error fetching services count:', error);
     }
