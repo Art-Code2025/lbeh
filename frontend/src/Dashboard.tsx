@@ -291,12 +291,19 @@ function Dashboard() {
         ...doc.data() 
       })) as any[];
       
+      // Debug: Log the actual document IDs from Firebase
+      console.log('📊 Categories from Firebase:');
+      data.forEach(cat => {
+        console.log(`  - ID: ${cat.id}, Name: ${cat.name}`);
+      });
+      
       // Transform to match local interface with serviceCount
       const transformedCategories: Category[] = data.map(cat => ({
         ...cat,
         serviceCount: 0 // سيتم تحديثه بعد تحميل الخدمات
       }));
       setCategories(transformedCategories);
+      console.log('✅ Categories loaded:', transformedCategories.length);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
       toast.error('فشل في تحميل الفئات');
@@ -609,46 +616,75 @@ function Dashboard() {
 
   const handleCategorySave = async (categoryData: Category) => {
     try {
-      if (editingCategory) {
-        // Update existing category
+      if (editingCategory && editingCategory.id) {
+        // Update existing category - use the actual Firebase document ID
+        console.log('Updating category with ID:', editingCategory.id);
         await updateDoc(doc(db, 'categories', editingCategory.id), {
-          ...categoryData,
+          name: categoryData.name,
+          description: categoryData.description,
+          icon: categoryData.icon,
+          color: categoryData.color,
           updatedAt: new Date().toISOString()
         });
         toast.success('تم تحديث الفئة بنجاح');
       } else {
-        // Add new category
-        await addDoc(collection(db, 'categories'), {
-          ...categoryData,
+        // Add new category - let Firebase generate the ID
+        console.log('Adding new category:', categoryData.name);
+        const docRef = await addDoc(collection(db, 'categories'), {
+          name: categoryData.name,
+          description: categoryData.description,
+          icon: categoryData.icon,
+          color: categoryData.color,
           createdAt: new Date().toISOString()
         });
+        console.log('New category added with ID:', docRef.id);
         toast.success('تم إضافة الفئة بنجاح');
       }
       setShowCategoryModal(false);
       setEditingCategory(null);
       await fetchCategories();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving category:', error);
-      toast.error('فشل في حفظ الفئة');
+      if (error?.code === 'not-found') {
+        toast.error('الفئة غير موجودة في قاعدة البيانات');
+      } else if (error?.code === 'permission-denied') {
+        toast.error('ليس لديك صلاحية لتعديل هذه الفئة');
+      } else {
+        toast.error('فشل في حفظ الفئة: ' + (error?.message || 'خطأ غير معروف'));
+      }
     }
   };
 
   const handleCategoryEdit = (category: Category) => {
+    console.log('Editing category:', category.id, category.name);
     setEditingCategory(category);
     setShowCategoryModal(true);
   };
 
   const handleCategoryDelete = async (categoryId: string) => {
+    if (!categoryId) {
+      toast.error('معرف الفئة غير صحيح');
+      return;
+    }
+
     if (!window.confirm('هل أنت متأكد من حذف هذه الفئة؟')) {
       return;
     }
+    
     try {
+      console.log('Deleting category with ID:', categoryId);
       await deleteDoc(doc(db, 'categories', categoryId));
       toast.success('تم حذف الفئة بنجاح');
       await fetchCategories();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting category:', error);
-      toast.error('فشل في حذف الفئة');
+      if (error?.code === 'not-found') {
+        toast.error('الفئة غير موجودة في قاعدة البيانات');
+      } else if (error?.code === 'permission-denied') {
+        toast.error('ليس لديك صلاحية لحذف هذه الفئة');
+      } else {
+        toast.error('فشل في حذف الفئة: ' + (error?.message || 'خطأ غير معروف'));
+      }
     }
   };
 

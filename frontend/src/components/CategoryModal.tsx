@@ -75,13 +75,13 @@ const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, category
     setLoading(true);
     
     try {
-      // Generate ID if creating new category
-      if (!formData.id) {
-        formData.id = formData.name.toLowerCase().replace(/\s+/g, '_');
-      }
-
+      // Don't generate custom ID - let Firebase handle it
       const newCategory: Category = {
-        ...formData,
+        id: formData.id, // Keep existing ID for updates, empty for new categories
+        name: formData.name,
+        description: formData.description,
+        icon: formData.icon,
+        color: formData.color,
         serviceCount: category?.serviceCount || 0
       };
 
