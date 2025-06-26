@@ -1,6 +1,24 @@
 import React, { useState } from 'react';
 import aboutImage from '../assets/about.png';
 import managerImage from '../assets/manger.png';
+import { Link } from 'react-router-dom';
+import { 
+  Calendar, 
+  Target, 
+  Heart, 
+  Users, 
+  Lightbulb, 
+  Shield, 
+  Award, 
+  Clock,
+  CheckCircle,
+  Star,
+  ArrowLeft,
+  ArrowRight,
+  Truck,
+  MapPin,
+  Settings
+} from 'lucide-react';
 
 // 1) واجهة نوع السؤال والجواب
 interface FAQItem {
@@ -65,130 +83,314 @@ function FAQ({ questions }: { questions: FAQItem[] }) {
   );
 }
 
-function About() {
+const About: React.FC = () => {
   return (
-    <main id="app">
-      {/* القسم الأول: من نحن */}
-      <section className="relative py-16 bg-white">
-        <div className="container mx-auto px-4 flex flex-col md:flex-row items-center">
-          {/* الصورة على اليسار */}
-          <div className="md:w-1/2 flex justify-center mb-8 md:mb-0" data-aos="fade-up-left">
-            <img
-              src={aboutImage}
-              alt="صورة توضيحية"
-              className="rounded-lg shadow-lg w-full max-w-lg"
-            />
-          </div>
-
-          {/* النص على اليمين */}
-          <div className="md:w-1/2 text-right md:pl-8" data-aos="fade-up-right">
-            <h4 className="text-green-600 font-bold mb-2">من نحن</h4>
-            <h2 className="text-3xl font-bold mb-4">شركة مواسم الخدمات</h2>
-            <p className="text-gray-700 mb-6 leading-relaxed">
-            مواسم الخدمات هي شركة وطنية متخصصة في تقديم خدمات النظافة الشاملة للفلل والقصور، وتأجير وايتات الصرف الصحي.
-              وتقدم لكم هذه الخدمات بمعايير عالية وعن طريق عمالة متخصصة في هذا المجال
-              لها خبرة واسعة خولتها لإظهار الإحترافية والدقة في نتائجها دائماً
-              نحن في مواسم نسعى لأن نكون بين نخبة الشركات التي تهتم وتعتني بعملائها
-              لربط رضاهم بنجاحنا الدائم
-            </p>
-
-            <ul className="space-y-4">
-              <li>
-                <span className="text-green-600 font-bold block mb-1"> : رؤيتنا</span>
-                <h5 className="text-gray-800">
-                  أن نكون المؤسسة الرائدة رقم واحد في مجال النظافة وخدمة الحاويات ودعم عملائنا طوال فترة عملنا معهم
-                </h5>
-              </li>
-              <li>
-                <span className="text-green-600 font-bold block mb-1"> : رسالتنا</span>
-                <h5 className="text-gray-800">
-                  أن تقوم ببيع منتج لعميل أمر سهل يحتاج بعض الجهد ولكن أن تحافظ على رضى ذلك العميل هو الأمر الأكثر صعوبة
-                </h5>
-              </li>
-              <li>
-                <span className="text-green-600 font-bold block mb-1"> : قيمنا</span>
-                <h5 className="text-gray-800">المرونة - التعاون - التفاني</h5>
-              </li>
-            </ul>
+    <div dir="rtl" className="min-h-screen bg-gray-900 text-white">
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 py-20">
+        <div className="max-w-6xl mx-auto px-4 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">مشروع "لبيه"</h1>
+          <p className="text-xl text-blue-100 mb-6">لبيه لطلبك بأي طريقة</p>
+          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-6 py-3 rounded-full">
+            <Calendar className="w-5 h-5" />
+            <span>تأسس عام 2015م</span>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* القسم الثاني: كلمة المدير العام */}
-      <section className="relative py-16 bg-gray-50 overflow-hidden">
-        {/* شكل مموّج (Wave) في الخلفية */}
-        <div className="absolute inset-0 -z-10 pointer-events-none">
-          <svg
-            className="w-full h-full text-white fill-current"
-            viewBox="0 0 1440 320"
-            preserveAspectRatio="none"
-          >
-            <path d="M0,64L48,85.3C96,107,192,149,288,186.7C384,224,480,256,576,250.7C672,245,768,203,864,170.7C960,139,1056,117,1152,138.7C1248,160,1344,224,1392,256L1440,288L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" />
-          </svg>
-        </div>
+      <div className="max-w-6xl mx-auto px-4 py-16">
+        {/* Project Overview */}
+        <section className="mb-20">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-white mb-4">نظرة عامة عن المشروع</h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto"></div>
+          </div>
 
-        <div className="container mx-auto px-4">
-          <div
-            className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 text-center"
-            data-aos="fade-up-left"
-            data-aos-duration="1000"
-          >
-            <div className="flex flex-col items-center">
-              <img
-                src={managerImage}
-                alt="صورة المدير"
-                className="w-32 h-32 rounded-full object-cover mb-4"
-              />
-              <h4 className="text-green-600 font-bold mb-2">من نحن</h4>
-              <h2 className="text-3xl font-bold mb-4">كلمة الرئيس التنفيذي</h2>
-              <p className="text-gray-700 mb-6 leading-relaxed">
-                مواسم الخدمات هي شركة وطنية متخصصة في تقديم خدمات النظافة الشاملة للفلل والقصور، وتأجير وايتات الصرف الصحي.
-                وتقدم لكم هذه الخدمات بمعايير عالية وعن طريق عمالة متخصصة في هذا المجال
-                لها خبرة واسعة خولتها لإظهار الإحترافية والدقة في نتائجها دائماً
-                نحن في مواسم نسعى لأن نكون بين نخبة الشركات التي تهتم وتعتني بعملائها
-                لربط رضاهم بنجاحنا الدائم
-                <br />
-                خدماتنا لا تقتصر على تنفيذ العمل فقط، بل نمتلك فريق متخصص للرد على استفساراتكم
-                ومتابعة ملاحظاتكم قبل وأثناء وبعد انتهاء العمل للحصول على أعلى درجات الرضا
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-6">بداية مشروع "لبيه"</h3>
+              <p className="text-gray-300 text-lg leading-relaxed mb-6">
+                بدأ المشروع فعلياً عام 2015م بتأسيس متجر إلكتروني لتسجيل الطلبات بأسرع وأبسط الطرق التقنية الحديثة، 
+                وكانت بداية خدماتنا تشمل نطاقاً حديثاً لطرق توصيل متنوعة وسهلة من خلال الجدولة الإلكترونية.
               </p>
-              <h5 className="text-xl font-bold text-gray-800">محمد عبد الله السلوم</h5>
-              <span className="text-green-600"> الرئيس التنفيذي</span>
+              <p className="text-gray-300 text-lg leading-relaxed mb-6">
+                تأسيس مشروع "لبيه" باسم حياة عام 2015م مع خطة تسجيل حياة كنطاق شامل، 
+                والهدف تسهيل حياة الناس بخدمة سريعة وفعالة.
+              </p>
+              <div className="flex items-center gap-3 text-blue-400">
+                <CheckCircle className="w-5 h-5" />
+                <span className="font-semibold">نسعى لتوسيع خدماتنا، نقدم تجارب حديثة وفعالة تواكب متطلبات السوق</span>
+              </div>
+            </div>
+            
+            <div className="bg-gray-800 rounded-2xl p-8 border border-gray-700">
+              <h4 className="text-xl font-bold text-white mb-6">خدماتنا الأساسية</h4>
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 p-4 bg-gray-700 rounded-lg">
+                  <div className="p-2 bg-blue-500/20 rounded-lg">
+                    <Truck className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <div>
+                    <h5 className="font-semibold text-white">التوصيل والمشاوير الداخلية</h5>
+                    <p className="text-gray-400 text-sm">خدمات التوصيل والمشاوير داخل المدينة</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4 p-4 bg-gray-700 rounded-lg">
+                  <div className="p-2 bg-green-500/20 rounded-lg">
+                    <MapPin className="w-6 h-6 text-green-400" />
+                  </div>
+                  <div>
+                    <h5 className="font-semibold text-white">المشاوير الخارجية</h5>
+                    <p className="text-gray-400 text-sm">الرحلات والمشاوير بين المدن</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4 p-4 bg-gray-700 rounded-lg">
+                  <div className="p-2 bg-orange-500/20 rounded-lg">
+                    <Settings className="w-6 h-6 text-orange-400" />
+                  </div>
+                  <div>
+                    <h5 className="font-semibold text-white">الصيانة المنزلية</h5>
+                    <p className="text-gray-400 text-sm">خدمات الصيانة والإصلاح المنزلي</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* القسم الثالث: الأسئلة الشائعة */}
-      <section className="questions_abouts py-16 bg-white">
-        <div className="container mx-auto px-4">
+        {/* Vision Section */}
+        <section className="mb-20">
+          <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-3xl p-12 text-center border border-blue-500/20">
+            <Target className="w-16 h-16 text-blue-400 mx-auto mb-6" />
+            <h3 className="text-2xl font-bold text-white mb-6">رؤيتنا المستقبلية</h3>
+            <blockquote className="text-xl text-gray-200 leading-relaxed italic mb-6">
+              "نحن نهدف لتسهيل الحياة للناس بجعل الخدمات أكثر سلاسة"
+            </blockquote>
+            <p className="text-gray-300 text-lg leading-relaxed max-w-4xl mx-auto">
+              من خلال تقديم خدمات إلكترونية حديثة تسهّل على المستخدم الوصول للطلبات بأسلوب مريح وموثوق، 
+              وتوفير كل ما يلزم لبناء علاقة مميزة مع عملائنا.
+            </p>
+          </div>
+        </section>
+
+        {/* Values Section */}
+        <section className="mb-20">
           <div className="text-center mb-12">
-            <h4 className="text-green-600 font-bold mb-2">الأسئلة الشائعة</h4>
-            <h2 className="text-3xl font-bold">أسئلة وأجوبة</h2>
+            <h2 className="text-3xl font-bold text-white mb-4">قيمنا ومبادئنا</h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto"></div>
           </div>
 
-          <div className="max-w-3xl mx-auto">
-            <FAQ
-              questions={[
-                {
-                  question: 'ما هي أسعار الخدمات؟',
-                  answer: 'على حسب نوع الخدمة ومدتها'
-                },
-                {
-                  question: 'هل يوجد خصومات على أسعار الخدمات وما هي؟',
-                  answer: 'في حالة التعاقد السنوي'
-                },
-              
-                {
-                  question: 'ما هي ساعات العمل؟',
-                  answer: 'تلقي الطلبات من 7 صباحاً حتى 3 مساءً'
-                }
-              ]}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* الأمانة */}
+            <div className="bg-gray-800 rounded-2xl p-8 text-center border border-gray-700 hover:border-blue-500/50 transition-all duration-300">
+              <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Shield className="w-8 h-8 text-blue-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-4">الأمانة</h3>
+              <p className="text-gray-300 leading-relaxed">
+                نحرص على تقديم خدماتنا بصدق وشفافية مطلقة.
+              </p>
+            </div>
+
+            {/* الاحترافية */}
+            <div className="bg-gray-800 rounded-2xl p-8 text-center border border-gray-700 hover:border-green-500/50 transition-all duration-300">
+              <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Award className="w-8 h-8 text-green-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-4">الاحترافية</h3>
+              <p className="text-gray-300 leading-relaxed">
+                نقدم خدماتنا باحترافية ومهارة عالية من خلال كوادر مدربة وتعمل لإرضاء العملاء.
+              </p>
+            </div>
+
+            {/* الابتكار */}
+            <div className="bg-gray-800 rounded-2xl p-8 text-center border border-gray-700 hover:border-purple-500/50 transition-all duration-300">
+              <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Lightbulb className="w-8 h-8 text-purple-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-4">الابتكار</h3>
+              <p className="text-gray-300 leading-relaxed">
+                نحرص دائماً على إيجاد طرق جديدة لتطوير خدماتنا وتحسين تجربة العميل، 
+                ونسعى لتقديم أحدث الخدمات التقنية.
+              </p>
+            </div>
+
+            {/* خدمة العميل */}
+            <div className="bg-gray-800 rounded-2xl p-8 text-center border border-gray-700 hover:border-yellow-500/50 transition-all duration-300">
+              <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Heart className="w-8 h-8 text-yellow-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-4">خدمة العميل</h3>
+              <p className="text-gray-300 leading-relaxed">
+                العميل هو محور اهتمامنا، نسعى دائماً لتقديم أفضل تجربة من خلال المنصات الإلكترونية.
+              </p>
+            </div>
           </div>
-        </div>
-      </section>
-    </main>
+        </section>
+
+        {/* Future Vision Section */}
+        <section className="mb-20">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-white mb-4">نظرة مستقبلية</h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto"></div>
+          </div>
+
+          <div className="bg-gray-800 rounded-3xl p-12 border border-gray-700">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <div>
+                <h3 className="text-2xl font-bold text-white mb-6">سائقو التوصيل</h3>
+                <p className="text-gray-300 text-lg leading-relaxed mb-6">
+                  هم الواجهة التي تمثلنا في المشاريع، حيث يقومون بتوصيل الطلبات بأمان وسرعة 
+                  ويُقيّمون بشكل دوري لضمان تقديم أفضل خدمة ممكنة.
+                </p>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                    <span className="text-gray-300">تدريب مستمر ومتطور</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                    <span className="text-gray-300">تقييم دوري للأداء</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                    <span className="text-gray-300">ضمان الأمان والسرعة</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl p-8 border border-blue-500/20">
+                <div className="text-center">
+                  <Users className="w-16 h-16 text-blue-400 mx-auto mb-6" />
+                  <h4 className="text-xl font-bold text-white mb-4">فريق عمل محترف</h4>
+                  <p className="text-gray-300 leading-relaxed">
+                    نحرص على اختيار أفضل الكوادر وتدريبهم باستمرار لضمان تقديم خدمة متميزة تليق بعملائنا الكرام.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Timeline Section */}
+        <section className="mb-20">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-white mb-4">رحلتنا عبر الزمن</h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto"></div>
+          </div>
+
+          <div className="relative">
+            <div className="absolute right-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 to-purple-500"></div>
+            
+            <div className="space-y-12">
+              <div className="relative flex items-center gap-8">
+                <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg relative z-10">
+                  2015
+                </div>
+                <div className="bg-gray-800 rounded-2xl p-6 flex-1 border border-gray-700">
+                  <h3 className="text-xl font-bold text-white mb-3">البداية الرسمية</h3>
+                  <p className="text-gray-300 leading-relaxed">
+                    تأسيس مشروع "لبيه" باسم حياة عام 2015م مع خطة تسجيل حياة كنطاق شامل، 
+                    والهدف تسهيل حياة الناس بخدمة سريعة وفعالة.
+                  </p>
+                </div>
+              </div>
+
+              <div className="relative flex items-center gap-8">
+                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white font-bold relative z-10">
+                  <Lightbulb className="w-8 h-8" />
+                </div>
+                <div className="bg-gray-800 rounded-2xl p-6 flex-1 border border-gray-700">
+                  <h3 className="text-xl font-bold text-white mb-3">التطوير التقني</h3>
+                  <p className="text-gray-300 leading-relaxed">
+                    بدأ المشروع فعلياً بتأسيس متجر إلكتروني لتسجيل الطلبات بأسرع وأبسط الطرق التقنية الحديثة، 
+                    وكانت بداية خدماتنا تشمل نطاقاً حديثاً لطرق توصيل متنوعة وسهلة.
+                  </p>
+                </div>
+              </div>
+
+              <div className="relative flex items-center gap-8">
+                <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold relative z-10">
+                  <Target className="w-8 h-8" />
+                </div>
+                <div className="bg-gray-800 rounded-2xl p-6 flex-1 border border-gray-700">
+                  <h3 className="text-xl font-bold text-white mb-3">التوسع والنمو</h3>
+                  <p className="text-gray-300 leading-relaxed">
+                    نسعى لتوسيع خدماتنا، نقدم تجارب حديثة وفعالة تواكب متطلبات السوق، 
+                    مع التركيز على تقديم أفضل تجربة للعملاء من خلال المنصات الإلكترونية.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Stats Section */}
+        <section className="mb-20">
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-12 text-center">
+            <h2 className="text-3xl font-bold text-white mb-12">إنجازاتنا بالأرقام</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
+                <div className="text-4xl font-bold text-white mb-2">9+</div>
+                <div className="text-blue-100">سنوات من الخبرة</div>
+              </div>
+              
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
+                <div className="text-4xl font-bold text-white mb-2">1000+</div>
+                <div className="text-blue-100">عميل راضٍ</div>
+              </div>
+              
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
+                <div className="text-4xl font-bold text-white mb-2">24/7</div>
+                <div className="text-blue-100">خدمة متواصلة</div>
+              </div>
+              
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
+                <div className="text-4xl font-bold text-white mb-2">4.8</div>
+                <div className="text-blue-100 flex items-center justify-center gap-1">
+                  <Star className="w-4 h-4 fill-current" />
+                  تقييم العملاء
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="text-center">
+          <div className="bg-gray-800 rounded-3xl p-12 border border-gray-700">
+            <h2 className="text-3xl font-bold text-white mb-6">انضم إلى رحلتنا</h2>
+            <p className="text-gray-300 text-lg leading-relaxed mb-8 max-w-2xl mx-auto">
+              نهايةً، نحن نؤمن بأن النجاح يأتي من خلال تقديم خدمة متميزة تفوق توقعات عملائنا. 
+              انضم إلينا واكتشف الفرق في جودة الخدمة.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                to="/services"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all duration-200 shadow-lg"
+              >
+                استكشف خدماتنا
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+              
+              <Link
+                to="/contact"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-semibold transition-all duration-200"
+              >
+                تواصل معنا
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
   );
-}
+};
 
 export default About;

@@ -20,10 +20,13 @@ import {
   ThumbsUp,
   Calendar,
   UserCircle,
-  Package
+  Package,
+  ArrowUpRight
 } from 'lucide-react';
 import { db } from '../firebase.config';
 import { collection, getDocs } from 'firebase/firestore';
+import { categoriesAPI, servicesAPI } from '../services/api';
+import { toast } from 'react-hot-toast';
 
 interface Category {
   id: string;
@@ -41,61 +44,90 @@ interface Service {
   categoryName: string;
   homeShortDescription: string;
   mainImage?: string;
-  price: string;
+  price?: string;
   duration?: string;
+  description?: string;
+  features?: string[];
+  detailedImages?: string[];
+  availability?: string;
 }
 
 const Home: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch categories from Firebase/API
+  const fetchCategories = async (): Promise<Category[]> => {
+    try {
+      return await categoriesAPI.getAll();
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      throw error;
+    }
+  };
+
+  // Fetch services from Firebase/API  
+  const fetchServices = async (): Promise<Service[]> => {
+    try {
+      const apiServices = await servicesAPI.getAll();
+      // Transform API services to match our local Service interface
+      return apiServices.map(service => ({
+        id: service.id.toString(), // Convert number to string
+        name: service.name,
+        category: service.category,
+        categoryName: service.categoryName,
+        homeShortDescription: service.homeShortDescription,
+        mainImage: service.mainImage,
+        price: service.price,
+        duration: service.duration,
+        description: service.homeShortDescription,
+        features: [],
+        detailedImages: [],
+        availability: '24/7'
+      }));
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      throw error;
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
+    const loadData = async () => {
       try {
-        // جلب الفئات من Firebase مباشرة
-        const categoriesRef = collection(db, 'categories');
-        const categoriesSnapshot = await getDocs(categoriesRef);
-        const categoriesData: Category[] = [];
+        setLoading(true);
+        setError(null);
         
-        categoriesSnapshot.forEach((doc) => {
-          categoriesData.push({
-            id: doc.id,
-            ...doc.data()
-          } as Category);
+        // Fetch both categories and services
+        const [categoriesData, servicesData] = await Promise.all([
+          fetchCategories(),
+          fetchServices()
+        ]);
+        
+        setCategories(categoriesData);
+        setServices(servicesData);
+        
+        console.log('✅ Home data loaded:', { 
+          categories: categoriesData.length, 
+          services: servicesData.length 
         });
-        
-        setCategories(categoriesData || []);
-
-        // إنشاء الخدمات من الفئات
-        const servicesData: Service[] = [];
-        categoriesSnapshot.forEach((doc) => {
-          const category = doc.data();
-          servicesData.push({
-            id: doc.id,
-            name: category.name,
-            category: doc.id,
-            categoryName: category.name,
-            homeShortDescription: category.description,
-            mainImage: getDefaultImage(doc.id),
-            price: getDefaultPrice(doc.id),
-            duration: getDefaultDuration(doc.id)
-          });
-        });
-        
-        setServices((servicesData || []).slice(0, 6)); // عرض أول 6 خدمات فقط
-
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setCategories([]);
-        setServices([]);
+      } catch (error: any) {
+        console.error('❌ Error loading home data:', error);
+        setError(error.message || 'فشل في تحميل البيانات');
+        toast.error('فشل في تحميل البيانات');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    loadData();
   }, []);
+
+  // Get popular services (first 6 services from database)
+  const getPopularServices = () => {
+    return services.slice(0, 6);
+  };
 
   // Scroll Animation Hook
   useEffect(() => {
@@ -343,94 +375,105 @@ const Home: React.FC = () => {
       </section>
 
       {/* Popular Services Section */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-gradient-to-b from-[#f0faff] to-[#e0f2fe]">
-        <div className="container-custom px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12 scroll-animate opacity-0 translate-y-8">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-800 mb-4">خدماتنا الشائعة</h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              أشهر الخدمات المطلوبة من عملائنا الكرام
-            </p>
+      <section className="py-20 bg-gray-800">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-white mb-4">خدماتنا الشائعة</h2>
+            <p className="text-xl text-gray-300">أشهر الخدمات المطلوبة من عملائنا الكرام</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {loading ? (
-              <div className="col-span-full text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-600 mx-auto"></div>
-                <p className="mt-4 text-slate-600">جاري تحميل الخدمات...</p>
-              </div>
-            ) : services.length > 0 ? (
-              services.map((service, index) => (
-                <Link
-                  key={service.id}
-                  to={`/service/${service.id}`}
-                  className="group bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg hover:shadow-xl transform transition-all duration-300 hover:-translate-y-1 border border-cyan-100/50 scroll-animate opacity-0 translate-y-8"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <div className="flex flex-col h-full">
-                    {service.mainImage && (
-                      <div className="mb-4 overflow-hidden rounded-lg">
-                        <img
-                          src={service.mainImage}
-                          alt={service.name}
-                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                          loading="lazy"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop&crop=center';
-                          }}
-                        />
-                      </div>
-                    )}
-                    <div className="flex-grow">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs text-slate-500 bg-cyan-100 px-2 py-1 rounded-full">
-                          {service.categoryName}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                          <span className="text-xs text-slate-600">4.8</span>
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-gray-300 text-lg">جاري تحميل الخدمات...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-red-400 text-lg mb-4">⚠️ {error}</p>
+              <button 
+                onClick={() => window.location.reload()}
+                className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+              >
+                إعادة المحاولة
+              </button>
+            </div>
+          ) : getPopularServices().length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-400 text-lg mb-4">لا توجد خدمات متاحة حالياً</p>
+              <Link 
+                to="/dashboard"
+                className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors inline-block"
+              >
+                إضافة خدمات جديدة
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {getPopularServices().map((service) => (
+                <div key={service.id} className="bg-gray-700 rounded-2xl p-6 hover:bg-gray-600 transition-all duration-300 group">
+                  <div className="relative h-48 mb-6 rounded-xl overflow-hidden bg-gray-600">
+                    {service.mainImage ? (
+                      <img
+                        src={service.mainImage}
+                        alt={service.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="text-4xl">
+                          {service.category === 'internal_delivery' && '🚚'}
+                          {service.category === 'external_trips' && '🗺️'}
+                          {service.category === 'home_maintenance' && '🔧'}
+                          {!['internal_delivery', 'external_trips', 'home_maintenance'].includes(service.category) && '⚙️'}
                         </div>
                       </div>
-                      <h3 className="text-xl font-bold text-slate-800 mb-2 group-hover:text-cyan-600">
-                        {service.name}
-                      </h3>
-                      <p className="text-slate-600 mb-4 text-sm line-clamp-2">
-                        {service.homeShortDescription}
-                      </p>
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-cyan-600 font-bold">{service.price}</span>
-                        {service.duration && (
-                          <div className="flex items-center gap-1 text-slate-500">
-                            <Clock className="w-4 h-4" />
-                            <span className="text-xs">{service.duration}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-end text-cyan-600 group-hover:text-cyan-700 pt-4 border-t border-cyan-100">
-                      <span className="font-semibold ml-2">احجز الآن</span>
-                      <ArrowRight className="w-4 h-4 transform -rotate-180 transition-transform group-hover:-translate-x-1" />
-                    </div>
+                    )}
                   </div>
-                </Link>
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12">
-                <Package className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-600">لا توجد خدمات متاحة حالياً</p>
-                <p className="text-slate-500 text-sm mt-2">سنضيف المزيد من الخدمات قريباً</p>
-              </div>
-            )}
-          </div>
+                  
+                  <h3 className="text-xl font-bold text-white mb-3">{service.name}</h3>
+                  <p className="text-gray-300 mb-4 line-clamp-2">{service.homeShortDescription}</p>
+                  
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm font-medium text-blue-400 bg-blue-500/20 px-3 py-1 rounded-full">
+                      {service.categoryName}
+                    </span>
+                    {service.price && (
+                      <span className="text-yellow-400 font-bold">
+                        {service.price}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <Link
+                      to={`/services/${service.id}`}
+                      className="flex-1 text-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                    >
+                      عرض التفاصيل
+                    </Link>
+                    <Link
+                      to={`/book/${service.id}`}
+                      className="flex-1 text-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+                    >
+                      احجز الآن
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
-          <div className="text-center mt-12 scroll-animate opacity-0 translate-y-8">
-            <Link
-              to="/categories"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors duration-300 font-semibold"
-            >
-              <span>عرض جميع الخدمات</span>
-              <ArrowRight className="w-5 h-5 transform -rotate-180" />
-            </Link>
-          </div>
+          {!loading && !error && getPopularServices().length > 0 && (
+            <div className="text-center mt-12">
+              <Link
+                to="/services"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all duration-200 shadow-lg"
+              >
+                عرض جميع الخدمات
+                <ArrowUpRight className="w-5 h-5" />
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 

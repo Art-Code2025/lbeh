@@ -86,12 +86,29 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت');
+        return;
+      }
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('يرجى اختيار ملف صورة صالح');
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData(prev => ({
           ...prev,
           mainImage: reader.result as string
         }));
+        toast.success('تم تحميل الصورة الرئيسية بنجاح');
+      };
+      reader.onerror = () => {
+        toast.error('فشل في تحميل الصورة');
       };
       reader.readAsDataURL(file);
     }
@@ -100,22 +117,60 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const handleDetailedImagesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      const imagePromises = files.map(file => {
-        return new Promise<string>((resolve) => {
+      
+      // Validate total number of images
+      if (formData.detailedImages.length + files.length > 10) {
+        toast.error('يمكن إضافة 10 صور تفصيلية كحد أقصى');
+        return;
+      }
+      
+      const validFiles = files.filter(file => {
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error(`الصورة ${file.name} كبيرة جداً (الحد الأقصى 5 ميجابايت)`);
+          return false;
+        }
+        if (!file.type.startsWith('image/')) {
+          toast.error(`الملف ${file.name} ليس صورة صالحة`);
+          return false;
+        }
+        return true;
+      });
+      
+      if (validFiles.length === 0) return;
+      
+      const imagePromises = validFiles.map(file => {
+        return new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onloadend = () => {
             resolve(reader.result as string);
+          };
+          reader.onerror = () => {
+            reject(new Error(`فشل في تحميل ${file.name}`));
           };
           reader.readAsDataURL(file);
         });
       });
 
-      const base64Images = await Promise.all(imagePromises);
-      setFormData(prev => ({
-        ...prev,
-        detailedImages: [...prev.detailedImages, ...base64Images]
-      }));
+      try {
+        const base64Images = await Promise.all(imagePromises);
+        setFormData(prev => ({
+          ...prev,
+          detailedImages: [...prev.detailedImages, ...base64Images]
+        }));
+        toast.success(`تم تحميل ${base64Images.length} صورة بنجاح`);
+      } catch (error) {
+        console.error('Error processing images:', error);
+        toast.error('فشل في تحميل بعض الصور');
+      }
     }
+  };
+
+  const handleRemoveDetailedImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      detailedImages: prev.detailedImages.filter((_, i) => i !== index)
+    }));
+    toast.success('تم حذف الصورة');
   };
 
   const handleAddFeature = () => {
@@ -137,11 +192,26 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!formData.name || !formData.category) {
       toast.error('يرجى ملء جميع الحقول المطلوبة');
       return;
     }
-    onSave(formData);
+    
+    // Ensure images are included in the save data
+    const serviceData = {
+      ...formData,
+      mainImage: formData.mainImage || '',
+      detailedImages: formData.detailedImages || [],
+      imageDetails: formData.imageDetails || []
+    };
+    
+    console.log('Saving service with images:', {
+      mainImage: serviceData.mainImage ? 'Present' : 'Not present',
+      detailedImagesCount: serviceData.detailedImages.length
+    });
+    
+    onSave(serviceData);
     onClose();
   };
 
@@ -284,75 +354,88 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 الصورة الرئيسية
               </label>
-              <div className="flex items-center space-x-4">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleMainImageChange}
-                  className="hidden"
-                  id="mainImage"
-                />
-                <label
-                  htmlFor="mainImage"
-                  className="btn-secondary flex items-center gap-2"
-                >
-                  <Upload className="w-4 h-4" />
-                  اختر صورة
-                </label>
-                {formData.mainImage && (
-                  <img
-                    src={formData.mainImage}
-                    alt="Preview"
-                    className="w-20 h-20 object-cover rounded-lg"
+              <div className="space-y-3">
+                <div className="flex items-center space-x-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleMainImageChange}
+                    className="hidden"
+                    id="mainImage"
                   />
+                  <label
+                    htmlFor="mainImage"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg cursor-pointer transition-colors"
+                  >
+                    <Upload className="w-4 h-4" />
+                    اختر صورة رئيسية
+                  </label>
+                  <span className="text-sm text-gray-400">الحد الأقصى: 5 ميجابايت</span>
+                </div>
+                {formData.mainImage && (
+                  <div className="relative inline-block">
+                    <img
+                      src={formData.mainImage}
+                      alt="الصورة الرئيسية"
+                      className="w-32 h-32 object-cover rounded-lg border border-gray-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, mainImage: '' }))}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                صور تفصيلية
+                صور تفصيلية (اختياري)
               </label>
-              <div className="flex items-center space-x-4">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleDetailedImagesChange}
-                  className="hidden"
-                  id="detailedImages"
-                />
-                <label
-                  htmlFor="detailedImages"
-                  className="btn-secondary flex items-center gap-2"
-                >
-                  <Upload className="w-4 h-4" />
-                  اختر صور
-                </label>
-              </div>
-              <div className="grid grid-cols-4 gap-4 mt-4">
-                {formData.detailedImages.map((image, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={image}
-                      alt={`Detailed ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData(prev => ({
-                          ...prev,
-                          detailedImages: prev.detailedImages.filter((_, i) => i !== index)
-                        }));
-                        setDetailedImageFiles(prev => prev.filter((_, i) => i !== index));
-                      }}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleDetailedImagesChange}
+                    className="hidden"
+                    id="detailedImages"
+                  />
+                  <label
+                    htmlFor="detailedImages"
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg cursor-pointer transition-colors"
+                  >
+                    <Upload className="w-4 h-4" />
+                    إضافة صور تفصيلية
+                  </label>
+                  <span className="text-sm text-gray-400">
+                    {formData.detailedImages.length}/10 صور
+                  </span>
+                </div>
+                {formData.detailedImages.length > 0 && (
+                  <div className="grid grid-cols-4 gap-3">
+                    {formData.detailedImages.map((image, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={image}
+                          alt={`صورة تفصيلية ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg border border-gray-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDetailedImage(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
