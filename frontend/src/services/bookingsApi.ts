@@ -51,98 +51,145 @@ export interface BookingStats {
   }>;
 }
 
-// Enhanced API call function
+// Enhanced API call function with better error handling
 async function makeApiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
-  
-  try {
-    const response = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options
-    });
+    const url = `${API_BASE_URL}${endpoint}`;
     
-    // Get response text first to check content
-    const responseText = await response.text();
-    
-    // Check if response starts with HTML (common error indicator)
-    if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
-      throw new Error('Netlify Functions unavailable');
-    }
-    
-    // Check if response is empty
-    if (!responseText.trim()) {
-      throw new Error('Empty response from server');
-    }
-    
-    // Try to parse JSON
-    let jsonData: T;
     try {
-      jsonData = JSON.parse(responseText);
-    } catch (parseError) {
-      throw new Error('Invalid JSON response');
+        const response = await fetch(url, {
+            headers: { 'Content-Type': 'application/json' },
+            ...options
+        });
+        
+        // Get response text first to check content
+        const responseText = await response.text();
+        
+        // Check if response starts with HTML (common error indicator)
+        if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+            throw new Error('API endpoint not available');
+        }
+        
+        // Check if response is empty
+        if (!responseText.trim()) {
+            throw new Error('Empty response from server');
+        }
+        
+        // Try to parse JSON
+        let jsonData: T;
+        try {
+            jsonData = JSON.parse(responseText);
+        } catch (parseError) {
+            throw new Error('Invalid JSON response');
+        }
+        
+        // Check HTTP status after parsing
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        return jsonData;
+    } catch (error) {
+        // Only log detailed errors in development
+        if (process.env.NODE_ENV === 'development') {
+            console.debug(`API fallback to Firebase for ${endpoint}`);
+        }
+        throw error;
     }
-    
-    // Check HTTP status after parsing
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+}
+
+// Firebase operations for bookings
+async function getBookingsFromFirebase(): Promise<any[]> {
+    try {
+        const querySnapshot = await getDocs(collection(db, 'bookings'));
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error('Firebase read failed for bookings:', error);
+        throw new Error('Failed to read bookings from database');
     }
-    
-    return jsonData;
-  } catch (error) {
-    // Only log detailed errors in development
-    if (process.env.NODE_ENV === 'development') {
-      console.debug(`API fallback to Firebase for ${endpoint}`);
+}
+
+async function addBookingToFirebase(data: any): Promise<{ id: string }> {
+    try {
+        const docRef = await addDoc(collection(db, 'bookings'), {
+            ...data,
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        });
+        return { id: docRef.id };
+    } catch (error) {
+        console.error('Firebase add failed for bookings:', error);
+        throw new Error('Failed to add booking to database');
     }
-    throw error;
-  }
 }
 
-// Enhanced Firebase operations
-async function getFromFirebase<T>(collectionName: string): Promise<T[]> {
-  try {
-    const querySnapshot = await getDocs(collection(db, collectionName));
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
-  } catch (error) {
-    console.error(`Firebase read failed for ${collectionName}:`, error);
-    throw new Error(`Failed to read ${collectionName} from database`);
-  }
+async function updateBookingInFirebase(id: string, data: any): Promise<{ message: string }> {
+    try {
+        await updateDoc(doc(db, 'bookings', id), {
+            ...data,
+            updatedAt: new Date().toISOString()
+        });
+        return { message: 'Updated successfully' };
+    } catch (error) {
+        console.error('Firebase update failed for bookings:', error);
+        throw new Error('Failed to update booking in database');
+    }
 }
 
-async function addToFirebase<T>(collectionName: string, data: any): Promise<{ id: string }> {
-  try {
-    const docRef = await addDoc(collection(db, collectionName), {
-      ...data,
-      createdAt: new Date().toISOString()
-    });
-    return { id: docRef.id };
-  } catch (error) {
-    console.error(`Firebase add failed for ${collectionName}:`, error);
-    throw new Error(`Failed to add ${collectionName} to database`);
-  }
+async function deleteBookingFromFirebase(id: string): Promise<{ message: string }> {
+    try {
+        await deleteDoc(doc(db, 'bookings', id));
+        return { message: 'Deleted successfully' };
+    } catch (error) {
+        console.error('Firebase delete failed for bookings:', error);
+        throw new Error('Failed to delete booking from database');
+    }
 }
 
-async function updateInFirebase(collectionName: string, id: string, data: any): Promise<{ message: string }> {
-  try {
-    await updateDoc(doc(db, collectionName, id), {
-      ...data,
-      updatedAt: new Date().toISOString()
-    });
-    return { message: 'Updated successfully' };
-  } catch (error) {
-    console.error(`Firebase update failed for ${collectionName}:`, error);
-    throw new Error(`Failed to update ${collectionName} in database`);
-  }
-}
+// Main API functions
+export const fetchBookings = async (): Promise<any[]> => {
+    try {
+        return await makeApiCall<any[]>('/bookings');
+    } catch (error) {
+        console.log('🔄 Using Firebase for bookings');
+        return await getBookingsFromFirebase();
+    }
+};
 
-async function deleteFromFirebase(collectionName: string, id: string): Promise<{ message: string }> {
-  try {
-    await deleteDoc(doc(db, collectionName, id));
-    return { message: 'Deleted successfully' };
-  } catch (error) {
-    console.error(`Firebase delete failed for ${collectionName}:`, error);
-    throw new Error(`Failed to delete ${collectionName} from database`);
-  }
-}
+export const createBooking = async (bookingData: any): Promise<{id: string}> => {
+    try {
+        return await makeApiCall('/bookings', {
+            method: 'POST',
+            body: JSON.stringify(bookingData),
+        });
+    } catch (error) {
+        console.log('🔄 Using Firebase for booking creation');
+        return await addBookingToFirebase(bookingData);
+    }
+};
+
+export const updateBooking = async (id: string, bookingData: any): Promise<{message: string}> => {
+    try {
+        return await makeApiCall(`/bookings`, {
+            method: 'PUT',
+            body: JSON.stringify({ id, ...bookingData }),
+        });
+    } catch (error) {
+        console.log('🔄 Using Firebase for booking update');
+        return await updateBookingInFirebase(id, bookingData);
+    }
+};
+
+export const deleteBooking = async (id: string): Promise<{message: string}> => {
+    try {
+        return await makeApiCall(`/bookings?id=${id}`, {
+            method: 'DELETE',
+        });
+    } catch (error) {
+        console.log('🔄 Using Firebase for booking deletion');
+        return await deleteBookingFromFirebase(id);
+    }
+};
 
 // Calculate stats from bookings data
 function calculateStats(bookings: Booking[]): BookingStats {
@@ -214,7 +261,7 @@ export const bookingsAPI = {
     try {
       return await makeApiCall<Booking[]>('/bookings');
     } catch (error) {
-      return await getFromFirebase<Booking>('bookings');
+      return await getBookingsFromFirebase();
     }
   },
 
@@ -222,7 +269,7 @@ export const bookingsAPI = {
     try {
       return await makeApiCall<Booking>(`/bookings?id=${id}`);
     } catch (error) {
-      const allBookings = await getFromFirebase<Booking>('bookings');
+      const allBookings = await getBookingsFromFirebase();
       return allBookings.find(booking => booking.id === id) || null;
     }
   },
@@ -239,7 +286,7 @@ export const bookingsAPI = {
         }),
       });
     } catch (error) {
-      return await addToFirebase('bookings', {
+      return await addBookingToFirebase({
         ...bookingData,
         status: 'pending',
         createdAt: new Date().toISOString(),
@@ -255,18 +302,18 @@ export const bookingsAPI = {
         body: JSON.stringify({ id, status }),
       });
     } catch (error) {
-      return await updateInFirebase('bookings', id, { status });
+      return await updateBookingInFirebase(id, { status });
     }
   },
 
   async update(id: string, bookingData: Partial<Booking>): Promise<{ message: string }> {
     try {
-      return await makeApiCall(`/bookings?id=${id}`, {
+      return await makeApiCall(`/bookings`, {
         method: 'PUT',
         body: JSON.stringify({ id, ...bookingData }),
       });
     } catch (error) {
-      return await updateInFirebase('bookings', id, bookingData);
+      return await updateBookingInFirebase(id, bookingData);
     }
   },
 
@@ -276,7 +323,7 @@ export const bookingsAPI = {
         method: 'DELETE',
       });
     } catch (error) {
-      return await deleteFromFirebase('bookings', id);
+      return await deleteBookingFromFirebase(id);
     }
   },
 
@@ -284,7 +331,7 @@ export const bookingsAPI = {
     try {
       return await makeApiCall<BookingStats>('/bookings/stats');
     } catch (error) {
-      const bookings = await getFromFirebase<Booking>('bookings');
+      const bookings = await getBookingsFromFirebase();
       return calculateStats(bookings);
     }
   },
@@ -293,7 +340,7 @@ export const bookingsAPI = {
     try {
       return await makeApiCall<Booking[]>(`/bookings?status=${status}`);
     } catch (error) {
-      const allBookings = await getFromFirebase<Booking>('bookings');
+      const allBookings = await getBookingsFromFirebase();
       return allBookings.filter(booking => booking.status === status);
     }
   }

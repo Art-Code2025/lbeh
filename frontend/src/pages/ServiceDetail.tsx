@@ -139,23 +139,17 @@ export default function ServiceDetail() {
   const handleBookingSubmit = async (formData: any) => {
     try {
       setSubmitting(true);
-      const response = await fetch('/.netlify/functions/bookings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (!response.ok) {
-        throw new Error('فشل في إرسال الطلب');
-      }
-
-      const result = await response.json();
+      
+      // استخدام bookingsApi الجديد
+      const { createBooking } = await import('../services/bookingsApi');
+      
+      const result = await createBooking(formData);
+      
       toast.success('تم إرسال طلبك بنجاح! سيتم التواصل معك قريباً');
       setShowBookingModal(false);
     } catch (error: any) {
-      toast.error(error.message);
+      console.error('Error creating booking:', error);
+      toast.error('فشل في إرسال الطلب. يرجى المحاولة مرة أخرى.');
     } finally {
       setSubmitting(false);
     }

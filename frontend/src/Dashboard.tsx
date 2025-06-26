@@ -115,7 +115,7 @@ interface BookingStats {
 
 // Local Dashboard types - only for non-API types
 interface Service {
-  id: number;
+  id: string;
   name: string;
   category: string;
   categoryName: string;
@@ -318,10 +318,10 @@ function Dashboard() {
         ...doc.data() 
       })) as any[];
       
-      // Transform to match local interface
+      // Transform to match local interface - keep ID as string from Firebase
       const transformedServices: Service[] = data.map(service => ({
         ...service,
-        id: parseInt(service.id) || Date.now(),
+        id: service.id, // Keep as string Firebase document ID
         detailsShortDescription: service.homeShortDescription || '',
         description: service.homeShortDescription || '',
         detailedImages: [],
@@ -329,6 +329,7 @@ function Dashboard() {
         features: []
       }));
       setServices(transformedServices);
+      console.log('✅ Services loaded:', transformedServices.length);
     } catch (error) {
       console.error('Failed to fetch services:', error);
       toast.error('فشل في تحميل الخدمات');
@@ -436,12 +437,12 @@ function Dashboard() {
     }
   };
 
-  const handleServiceDelete = async (id: number) => {
+  const handleServiceDelete = async (id: string) => {
     if (!window.confirm('هل أنت متأكد من حذف هذه الخدمة؟')) {
       return;
     }
     try {
-      await deleteDoc(doc(db, 'services', id.toString()));
+      await deleteDoc(doc(db, 'services', id));
       toast.success('تم حذف الخدمة بنجاح');
       await fetchServices();
     } catch (error: any) {
@@ -618,7 +619,7 @@ function Dashboard() {
     try {
       if (editingCategory && editingCategory.id) {
         // Update existing category - use the actual Firebase document ID
-        console.log('Updating category with ID:', editingCategory.id);
+        console.log('Updating category with Firebase ID:', editingCategory.id);
         await updateDoc(doc(db, 'categories', editingCategory.id), {
           name: categoryData.name,
           description: categoryData.description,
@@ -628,16 +629,17 @@ function Dashboard() {
         });
         toast.success('تم تحديث الفئة بنجاح');
       } else {
-        // Add new category - let Firebase generate the ID
+        // Add new category - let Firebase generate the ID automatically
         console.log('Adding new category:', categoryData.name);
-        const docRef = await addDoc(collection(db, 'categories'), {
+        const categoryToAdd = {
           name: categoryData.name,
           description: categoryData.description,
           icon: categoryData.icon,
           color: categoryData.color,
           createdAt: new Date().toISOString()
-        });
-        console.log('New category added with ID:', docRef.id);
+        };
+        const docRef = await addDoc(collection(db, 'categories'), categoryToAdd);
+        console.log('New category added with Firebase ID:', docRef.id);
         toast.success('تم إضافة الفئة بنجاح');
       }
       setShowCategoryModal(false);
@@ -645,13 +647,7 @@ function Dashboard() {
       await fetchCategories();
     } catch (error: any) {
       console.error('Error saving category:', error);
-      if (error?.code === 'not-found') {
-        toast.error('الفئة غير موجودة في قاعدة البيانات');
-      } else if (error?.code === 'permission-denied') {
-        toast.error('ليس لديك صلاحية لتعديل هذه الفئة');
-      } else {
-        toast.error('فشل في حفظ الفئة: ' + (error?.message || 'خطأ غير معروف'));
-      }
+      toast.error(`فشل في حفظ الفئة: ${error?.message || 'خطأ غير معروف'}`);
     }
   };
 
@@ -690,27 +686,39 @@ function Dashboard() {
 
   const handleServiceSave = async (serviceData: Service) => {
     try {
-      if (editingService) {
-        // Update existing service
-        await updateDoc(doc(db, 'services', editingService.id.toString()), {
-          ...serviceData,
+      if (editingService && editingService.id) {
+        // Update existing service - use Firebase document ID
+        await updateDoc(doc(db, 'services', editingService.id), {
+          name: serviceData.name,
+          category: serviceData.category,
+          categoryName: serviceData.categoryName,
+          homeShortDescription: serviceData.homeShortDescription,
+          description: serviceData.description,
+          mainImage: serviceData.mainImage,
           updatedAt: new Date().toISOString()
         });
         toast.success('تم تحديث الخدمة بنجاح');
       } else {
-        // Add new service
-        await addDoc(collection(db, 'services'), {
-          ...serviceData,
+        // Add new service - let Firebase generate the ID
+        const serviceToAdd = {
+          name: serviceData.name,
+          category: serviceData.category,
+          categoryName: serviceData.categoryName,
+          homeShortDescription: serviceData.homeShortDescription,
+          description: serviceData.description,
+          mainImage: serviceData.mainImage,
           createdAt: new Date().toISOString()
-        });
+        };
+        const docRef = await addDoc(collection(db, 'services'), serviceToAdd);
+        console.log('New service added with Firebase ID:', docRef.id);
         toast.success('تم إضافة الخدمة بنجاح');
       }
       setShowServiceModal(false);
       setEditingService(null);
       await fetchServices();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving service:', error);
-      toast.error('فشل في حفظ الخدمة');
+      toast.error(`فشل في حفظ الخدمة: ${error?.message || 'خطأ غير معروف'}`);
     }
   };
 

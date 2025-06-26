@@ -244,33 +244,17 @@ const BookService: React.FC = () => {
     try {
       setSubmitting(true);
       
-      // إرسال الحجز إلى Firebase مباشرة
-      const { initializeApp } = await import('firebase/app');
-      const { getFirestore, collection, addDoc } = await import('firebase/firestore');
-      
-      const firebaseConfig = {
-        apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
-        authDomain: "lbeh-81936.firebaseapp.com",
-        projectId: "lbeh-81936",
-        storageBucket: "lbeh-81936.firebasestorage.app",
-        messagingSenderId: "225834423678",
-        appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
-      };
-
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
+      // استخدام bookingsApi الجديد
+      const { createBooking } = await import('../services/bookingsApi');
       
       const bookingData = {
-        serviceId: service.id,
+        serviceId: service.id.toString(),
         serviceName: service.name,
         serviceCategory: service.category,
         fullName: formData.fullName,
         phoneNumber: formData.phoneNumber,
         address: formData.address,
         serviceDetails: formData.serviceDetails,
-        status: 'pending' as const,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
         // إضافة بيانات خاصة بالفئة
         ...(service.category === 'internal_delivery' && {
           deliveryLocation: formData.deliveryLocation,
@@ -291,7 +275,7 @@ const BookService: React.FC = () => {
         })
       };
 
-      await addDoc(collection(db, 'bookings'), bookingData);
+      const result = await createBooking(bookingData);
       
       toast.success('تم إرسال طلب الحجز بنجاح! سيتم التواصل معك قريباً.');
       navigate('/');

@@ -130,43 +130,34 @@ export const handler = async (event, context) => {
           headers,
           body: JSON.stringify({ 
             id: docRef.id, 
-            message: 'تم إنشاء الحجز بنجاح! سيتم التواصل معك قريباً',
-            booking_id: docRef.id
+            message: 'Booking created successfully' 
           })
         };
 
       case 'PUT':
-        if (segments.length === 1) {
-          const bookingId = segments[0];
-          const updateData = JSON.parse(event.body);
-          const bookingDoc = doc(db, 'bookings', bookingId);
-          
-          await updateDoc(bookingDoc, {
-            ...updateData,
-            updatedAt: new Date().toISOString()
-          });
-          
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ message: 'تم تحديث الحجز بنجاح' })
-          };
-        }
-        break;
+        const { id, ...updateData } = JSON.parse(event.body);
+        const bookingDoc = doc(db, 'bookings', id);
+        await updateDoc(bookingDoc, {
+          ...updateData,
+          updatedAt: new Date().toISOString()
+        });
+        
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ message: 'Booking updated successfully' })
+        };
 
       case 'DELETE':
-        if (segments.length === 1) {
-          const bookingId = segments[0];
-          const bookingDoc = doc(db, 'bookings', bookingId);
-          await deleteDoc(bookingDoc);
-          
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ message: 'تم حذف الحجز بنجاح' })
-          };
-        }
-        break;
+        const deleteId = event.queryStringParameters.id;
+        const deleteDocRef = doc(db, 'bookings', deleteId);
+        await deleteDoc(deleteDocRef);
+        
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ message: 'Booking deleted successfully' })
+        };
 
       default:
         return {
@@ -176,13 +167,13 @@ export const handler = async (event, context) => {
         };
     }
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error in bookings function:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({ 
         error: 'Internal server error',
-        details: error.message 
+        details: error.message
       })
     };
   }
