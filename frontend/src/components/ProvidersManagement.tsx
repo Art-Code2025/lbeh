@@ -46,11 +46,47 @@ const ProvidersManagement: React.FC<ProvidersManagementProps> = ({ isOpen, onClo
   const fetchProviders = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/.netlify/functions/providers');
-      if (response.ok) {
-        const data = await response.json();
-        setProviders(data);
+      
+      // First try Netlify Functions
+      try {
+        const response = await fetch('/.netlify/functions/providers');
+        if (response.ok) {
+          const data = await response.json();
+          setProviders(data);
+          return;
+        }
+      } catch (netlifyError) {
+        console.log('Netlify Functions not available, using Firebase directly...');
       }
+
+      // Fallback to Firebase direct access
+      const { initializeApp } = await import('firebase/app');
+      const { getFirestore, collection, getDocs } = await import('firebase/firestore');
+      
+      const firebaseConfig = {
+        apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
+        authDomain: "lbeh-81936.firebaseapp.com",
+        projectId: "lbeh-81936",
+        storageBucket: "lbeh-81936.firebasestorage.app",
+        messagingSenderId: "225834423678",
+        appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      
+      const providersRef = collection(db, 'providers');
+      const snapshot = await getDocs(providersRef);
+      
+      const data: Provider[] = [];
+      snapshot.forEach((doc) => {
+        data.push({
+          id: doc.id,
+          ...doc.data()
+        } as Provider);
+      });
+
+      setProviders(data);
     } catch (error) {
       console.error('Error fetching providers:', error);
       toast.error('فشل في جلب مقدمي الخدمة');

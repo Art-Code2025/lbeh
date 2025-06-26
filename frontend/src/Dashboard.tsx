@@ -249,27 +249,115 @@ function Dashboard() {
 
   const fetchBookings = async () => {
     try {
-      const response = await fetch('/.netlify/functions/bookings');
-      if (!response.ok) {
-        throw new Error('فشل في جلب الحجوزات');
+      // First try Netlify Functions
+      try {
+        const response = await fetch('/.netlify/functions/bookings');
+        if (response.ok) {
+          const data = await response.json();
+          setBookings(data);
+          return;
+        }
+      } catch (netlifyError) {
+        console.log('Netlify Functions not available, using Firebase directly...');
       }
-      const data = await response.json();
+
+      // Fallback to Firebase direct access
+      const { initializeApp } = await import('firebase/app');
+      const { getFirestore, collection, getDocs, query, orderBy } = await import('firebase/firestore');
+      
+      const firebaseConfig = {
+        apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
+        authDomain: "lbeh-81936.firebaseapp.com",
+        projectId: "lbeh-81936",
+        storageBucket: "lbeh-81936.firebasestorage.app",
+        messagingSenderId: "225834423678",
+        appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      
+      const bookingsRef = collection(db, 'bookings');
+      const q = query(bookingsRef, orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      
+      const data: Booking[] = [];
+      snapshot.forEach((doc) => {
+        data.push({
+          id: doc.id,
+          ...doc.data()
+        } as Booking);
+      });
+
       setBookings(data);
     } catch (error: any) {
-      toast.error(error.message);
+      console.error('Error fetching bookings:', error);
+      toast.error('فشل في جلب الحجوزات');
     }
   };
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/.netlify/functions/booking-stats');
-      if (!response.ok) {
-        throw new Error('فشل في جلب الإحصائيات');
+      // First try Netlify Functions
+      try {
+        const response = await fetch('/.netlify/functions/booking-stats');
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data);
+          return;
+        }
+      } catch (netlifyError) {
+        console.log('Netlify Functions not available for stats, calculating from bookings...');
       }
-      const data = await response.json();
-      setStats(data);
+
+      // Fallback: calculate stats from bookings data if we have it
+      if (bookings.length > 0) {
+        const stats: BookingStats = {
+          total: bookings.length,
+          pending: bookings.filter(b => b.status === 'pending').length,
+          confirmed: bookings.filter(b => b.status === 'confirmed').length,
+          inProgress: bookings.filter(b => b.status === 'in_progress').length,
+          completed: bookings.filter(b => b.status === 'completed').length,
+          cancelled: bookings.filter(b => b.status === 'cancelled').length,
+          byCategory: {},
+          byService: {},
+          categoryStats: [],
+          dailyStats: []
+        };
+
+        // Calculate category stats
+        bookings.forEach(booking => {
+          if (booking.serviceCategory) {
+            stats.byCategory[booking.serviceCategory] = (stats.byCategory[booking.serviceCategory] || 0) + 1;
+          }
+          if (booking.serviceName) {
+            stats.byService[booking.serviceName] = (stats.byService[booking.serviceName] || 0) + 1;
+          }
+        });
+
+        // Convert to arrays for charts
+        stats.categoryStats = Object.entries(stats.byCategory).map(([category, count]) => ({
+          category,
+          count
+        }));
+
+        // Calculate daily stats (last 7 days)
+        const dailyCount: Record<string, number> = {};
+        bookings.forEach((booking) => {
+          const date = new Date(booking.createdAt).toISOString().split('T')[0];
+          dailyCount[date] = (dailyCount[date] || 0) + 1;
+        });
+
+        stats.dailyStats = Object.entries(dailyCount).map(([date, count]) => ({
+          date,
+          count
+        }));
+
+        setStats(stats);
+      }
     } catch (error: any) {
-      toast.error(error.message);
+      console.error('Error fetching stats:', error);
+      toast.error('فشل في جلب الإحصائيات');
     } finally {
       setLoading(false);
     }
@@ -295,35 +383,94 @@ function Dashboard() {
 
   const handleBookingStatusUpdate = async (bookingId: string, newStatus: Booking['status']) => {
     try {
-      const response = await fetch(`/.netlify/functions/bookings/${bookingId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
-      if (!response.ok) {
-        throw new Error('فشل في تحديث حالة الحجز');
+      // First try Netlify Functions
+      try {
+        const response = await fetch(`/.netlify/functions/bookings/${bookingId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ status: newStatus })
+        });
+        if (response.ok) {
+          toast.success('تم تحديث حالة الحجز بنجاح');
+          fetchBookings();
+          return;
+        }
+      } catch (netlifyError) {
+        console.log('Netlify Functions not available, using Firebase directly...');
       }
+
+      // Fallback to Firebase direct access
+      const { initializeApp } = await import('firebase/app');
+      const { getFirestore, doc, updateDoc } = await import('firebase/firestore');
+      
+      const firebaseConfig = {
+        apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
+        authDomain: "lbeh-81936.firebaseapp.com",
+        projectId: "lbeh-81936",
+        storageBucket: "lbeh-81936.firebasestorage.app",
+        messagingSenderId: "225834423678",
+        appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      
+      const bookingDoc = doc(db, 'bookings', bookingId);
+      await updateDoc(bookingDoc, {
+        status: newStatus,
+        updatedAt: new Date().toISOString()
+      });
+
       toast.success('تم تحديث حالة الحجز بنجاح');
       fetchBookings();
     } catch (error: any) {
-      toast.error(error.message);
+      console.error('Error updating booking status:', error);
+      toast.error('فشل في تحديث حالة الحجز');
     }
   };
 
   const handleBookingDelete = async (bookingId: string) => {
     try {
-      const response = await fetch(`/.netlify/functions/bookings/${bookingId}`, {
-        method: 'DELETE'
-      });
-      if (!response.ok) {
-        throw new Error('فشل في حذف الحجز');
+      // First try Netlify Functions
+      try {
+        const response = await fetch(`/.netlify/functions/bookings/${bookingId}`, {
+          method: 'DELETE'
+        });
+        if (response.ok) {
+          toast.success('تم حذف الحجز بنجاح');
+          fetchBookings();
+          return;
+        }
+      } catch (netlifyError) {
+        console.log('Netlify Functions not available, using Firebase directly...');
       }
+
+      // Fallback to Firebase direct access
+      const { initializeApp } = await import('firebase/app');
+      const { getFirestore, doc, deleteDoc } = await import('firebase/firestore');
+      
+      const firebaseConfig = {
+        apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
+        authDomain: "lbeh-81936.firebaseapp.com",
+        projectId: "lbeh-81936",
+        storageBucket: "lbeh-81936.firebasestorage.app",
+        messagingSenderId: "225834423678",
+        appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      
+      const bookingDoc = doc(db, 'bookings', bookingId);
+      await deleteDoc(bookingDoc);
+
       toast.success('تم حذف الحجز بنجاح');
       fetchBookings();
     } catch (error: any) {
-      toast.error(error.message);
+      console.error('Error deleting booking:', error);
+      toast.error('فشل في حذف الحجز');
     }
   };
 

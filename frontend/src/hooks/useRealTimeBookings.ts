@@ -1,5 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, getDocs, query, orderBy } from 'firebase/firestore';
+
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
+  authDomain: "lbeh-81936.firebaseapp.com",
+  projectId: "lbeh-81936",
+  storageBucket: "lbeh-81936.firebasestorage.app",
+  messagingSenderId: "225834423678",
+  appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 interface Booking {
   id: string;
@@ -46,8 +61,13 @@ export const useRealTimeBookings = ({
 
   // Initialize audio
   useEffect(() => {
-    audioRef.current = new Audio('/notification.mp3');
-    audioRef.current.volume = 0.7;
+    // Create a simple beep sound using Web Audio API as fallback
+    try {
+      audioRef.current = new Audio('/notification.mp3');
+      audioRef.current.volume = 0.7;
+    } catch (error) {
+      console.log('Audio file not found, will use Web Audio API beep');
+    }
     
     return () => {
       if (intervalRef.current) {
@@ -56,49 +76,125 @@ export const useRealTimeBookings = ({
     };
   }, []);
 
-  // Fetch bookings function
+  // Fetch bookings function using Firebase directly
   const fetchBookings = async () => {
     try {
-      const response = await fetch('/.netlify/functions/bookings');
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Check for new bookings
-        if (lastCount > 0 && data.length > lastCount) {
-          const newBookings = data.slice(0, data.length - lastCount);
+      console.log('🔄 Fetching bookings from Firebase...');
+      
+      // First try Netlify Functions
+      try {
+        const response = await fetch('/.netlify/functions/bookings');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Bookings fetched from Netlify Functions:', data.length);
           
-          // Show notification for new bookings
-          newBookings.forEach((booking: Booking) => {
-            toast.success(
-              `🔔 طلب جديد: ${booking.serviceName} من ${booking.fullName}`,
-              {
-                position: "top-right",
-                autoClose: 8000,
-                className: 'rtl',
-                style: { direction: 'rtl' }
-              }
-            );
-            
-            if (onNewBooking) {
-              onNewBooking(booking);
-            }
-          });
-
-          // Play sound notification
-          if (soundEnabled && audioRef.current) {
-            audioRef.current.play().catch(console.error);
+          // Check for new bookings
+          if (lastCount > 0 && data.length > lastCount) {
+            const newBookings = data.slice(0, data.length - lastCount);
+            handleNewBookings(newBookings);
           }
 
-          // Show visual alert
-          setNewBookingAlert(true);
-          setTimeout(() => setNewBookingAlert(false), 3000);
+          setBookings(data);
+          setLastCount(data.length);
+          return;
         }
+      } catch (netlifyError) {
+        console.log('⚠️ Netlify Functions not available, using Firebase directly...');
+      }
 
-        setBookings(data);
-        setLastCount(data.length);
+      // Fallback to Firebase direct access
+      const bookingsRef = collection(db, 'bookings');
+      const q = query(bookingsRef, orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      
+      const data: Booking[] = [];
+      snapshot.forEach((doc) => {
+        data.push({
+          id: doc.id,
+          ...doc.data()
+        } as Booking);
+      });
+
+      console.log('✅ Bookings fetched from Firebase:', data.length);
+
+      // Check for new bookings
+      if (lastCount > 0 && data.length > lastCount) {
+        const newBookings = data.slice(0, data.length - lastCount);
+        handleNewBookings(newBookings);
+      }
+
+      setBookings(data);
+      setLastCount(data.length);
+      
+    } catch (error) {
+      console.error('❌ Error fetching bookings:', error);
+    }
+  };
+
+  // Handle new bookings notifications
+  const handleNewBookings = (newBookings: Booking[]) => {
+    newBookings.forEach((booking: Booking) => {
+      toast.success(
+        `🔔 طلب جديد: ${booking.serviceName} من ${booking.fullName}`,
+        {
+          position: "top-right",
+          autoClose: 8000,
+          className: 'rtl',
+          style: { direction: 'rtl' }
+        }
+      );
+      
+      if (onNewBooking) {
+        onNewBooking(booking);
+      }
+    });
+
+    // Play sound notification
+    if (soundEnabled) {
+      playNotificationSound();
+    }
+
+    // Show visual alert
+    setNewBookingAlert(true);
+    setTimeout(() => setNewBookingAlert(false), 3000);
+  };
+
+  // Play notification sound
+  const playNotificationSound = () => {
+    try {
+      if (audioRef.current) {
+        audioRef.current.play().catch(() => {
+          // Fallback: create beep sound using Web Audio API
+          createBeepSound();
+        });
+      } else {
+        createBeepSound();
       }
     } catch (error) {
-      console.error('Error fetching bookings:', error);
+      console.log('Could not play notification sound');
+    }
+  };
+
+  // Create beep sound using Web Audio API
+  const createBeepSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 800;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (error) {
+      console.log('Web Audio API not supported');
     }
   };
 
