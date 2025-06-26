@@ -67,21 +67,51 @@ import {
   CartesianGrid,
   ResponsiveContainer
 } from 'recharts';
-import { 
-  categoriesAPI,
-  servicesAPI,
-  testFirebaseConnection
-} from './services/api';
-import { bookingsAPI } from './services/bookingsApi';
-import { fetchProviders } from './services/providersApi';
 import { seedOnlyMissingData, clearAllCollections, seedFirebaseData } from './utils/seedFirebase';
 import { db } from './firebase.config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
-// Types from APIs
-import type { Booking, BookingStats } from './services/bookingsApi';
-
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement);
+
+// Firebase connection test function
+const testFirebaseConnection = async (): Promise<boolean> => {
+  try {
+    const testQuery = await getDocs(collection(db, 'categories'));
+    console.log('✅ Firebase connection successful');
+    return true;
+  } catch (error) {
+    console.error('❌ Firebase connection failed:', error);
+    return false;
+  }
+};
+
+// Types from APIs
+interface Booking {
+  id: string;
+  serviceId: string;
+  serviceName: string;
+  serviceCategory: string;
+  fullName: string;
+  phoneNumber: string;
+  address: string;
+  serviceDetails: string;
+  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface BookingStats {
+  total: number;
+  pending: number;
+  confirmed: number;
+  inProgress: number;
+  completed: number;
+  cancelled: number;
+  byCategory: Record<string, number>;
+  byService: Record<string, number>;
+  categoryStats: Array<{name: string, count: number}>;
+  dailyStats: Array<{date: string, count: number}>;
+}
 
 // Local Dashboard types - only for non-API types
 interface Service {
@@ -107,7 +137,7 @@ interface Category {
   description: string;
   icon: string;
   color: string;
-  serviceCount?: number;
+  serviceCount: number;
   createdAt?: string;
 }
 
@@ -259,15 +289,14 @@ function Dashboard() {
       const data = querySnapshot.docs.map(doc => ({ 
         id: doc.id, 
         ...doc.data() 
-      })) as Category[];
+      })) as any[];
       
-      // Transform to match local interface
+      // Transform to match local interface with serviceCount
       const transformedCategories: Category[] = data.map(cat => ({
         ...cat,
-        serviceCount: services.filter(s => s.category === cat.id).length
+        serviceCount: 0 // سيتم تحديثه بعد تحميل الخدمات
       }));
       setCategories(transformedCategories);
-      console.log('✅ Categories loaded:', data.length);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
       toast.error('فشل في تحميل الفئات');
@@ -293,7 +322,6 @@ function Dashboard() {
         features: []
       }));
       setServices(transformedServices);
-      console.log('✅ Services loaded:', data.length);
     } catch (error) {
       console.error('Failed to fetch services:', error);
       toast.error('فشل في تحميل الخدمات');
@@ -308,7 +336,6 @@ function Dashboard() {
         ...doc.data() 
       })) as any[];
       setBookings(data);
-      console.log('✅ Bookings loaded:', data.length);
     } catch (error) {
       console.error('Failed to fetch bookings:', error);
       toast.error('فشل في تحميل الحجوزات');
@@ -338,7 +365,6 @@ function Dashboard() {
       };
       
       setStats(stats);
-      console.log('✅ Stats loaded');
     } catch (error) {
       console.error('Failed to fetch stats:', error);
       toast.error('فشل في تحميل الإحصائيات');
@@ -353,7 +379,6 @@ function Dashboard() {
         ...doc.data() 
       })) as Provider[];
       setProviders(data);
-      console.log('✅ Providers loaded:', data.length);
     } catch (error) {
       console.error('Failed to fetch providers:', error);
       toast.error('فشل في تحميل مقدمي الخدمات');
@@ -454,11 +479,15 @@ function Dashboard() {
     navigate('/');
   };
 
-  const refreshData = () => {
+  const refreshData = async () => {
     setLoading(true);
-    fetchServices();
-    fetchBookings();
-    fetchStats();
+    await Promise.all([
+      fetchCategories(),
+      fetchServices(),
+      fetchBookings(),
+      fetchStats()
+    ]);
+    setLoading(false);
   };
 
   const exportBookings = () => {

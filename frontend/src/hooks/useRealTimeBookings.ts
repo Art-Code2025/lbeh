@@ -79,30 +79,7 @@ export const useRealTimeBookings = ({
   // Fetch bookings function using Firebase directly
   const fetchBookings = async () => {
     try {
-      console.log('🔄 Fetching bookings from Firebase...');
-      
-      // First try Netlify Functions
-      try {
-        const response = await fetch('/.netlify/functions/bookings');
-        if (response.ok) {
-          const data = await response.json();
-          console.log('✅ Bookings fetched from Netlify Functions:', data.length);
-          
-          // Check for new bookings
-          if (lastCount > 0 && data.length > lastCount) {
-            const newBookings = data.slice(0, data.length - lastCount);
-            handleNewBookings(newBookings);
-          }
-
-          setBookings(data);
-          setLastCount(data.length);
-          return;
-        }
-      } catch (netlifyError) {
-        console.log('⚠️ Netlify Functions not available, using Firebase directly...');
-      }
-
-      // Fallback to Firebase direct access
+      // جلب الحجوزات من Firebase مباشرة
       const bookingsRef = collection(db, 'bookings');
       const q = query(bookingsRef, orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
@@ -115,8 +92,6 @@ export const useRealTimeBookings = ({
         } as Booking);
       });
 
-      console.log('✅ Bookings fetched from Firebase:', data.length);
-
       // Check for new bookings
       if (lastCount > 0 && data.length > lastCount) {
         const newBookings = data.slice(0, data.length - lastCount);
@@ -127,7 +102,7 @@ export const useRealTimeBookings = ({
       setLastCount(data.length);
       
     } catch (error) {
-      console.error('❌ Error fetching bookings:', error);
+      console.error('Error fetching bookings:', error);
     }
   };
 

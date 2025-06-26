@@ -6,6 +6,7 @@ const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [servicesCount, setServicesCount] = useState(0);
   const location = useLocation();
+  const [services, setServices] = useState<any[]>([]);
 
   useEffect(() => {
     fetchServicesCount();
@@ -13,19 +14,7 @@ const Navbar: React.FC = () => {
 
   const fetchServicesCount = async () => {
     try {
-      // First try Netlify Functions
-      try {
-        const response = await fetch('/.netlify/functions/services');
-        if (response.ok) {
-          const services = await response.json();
-          setServicesCount(services.length);
-          return;
-        }
-      } catch (netlifyError) {
-        console.log('Netlify Functions not available, using Firebase directly...');
-      }
-
-      // Fallback to Firebase direct access
+      // جلب الخدمات من Firebase مباشرة
       const { initializeApp } = await import('firebase/app');
       const { getFirestore, collection, getDocs } = await import('firebase/firestore');
       
@@ -41,12 +30,25 @@ const Navbar: React.FC = () => {
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       
+      // جلب الفئات كخدمات
       const categoriesRef = collection(db, 'categories');
       const snapshot = await getDocs(categoriesRef);
+      const servicesData: any[] = [];
       
-      setServicesCount(snapshot.size); // عدد الفئات كخدمات
+      snapshot.forEach((doc) => {
+        const category = doc.data();
+        servicesData.push({
+          id: doc.id,
+          name: category.name,
+          category: doc.id,
+          categoryName: category.name
+        });
+      });
+      
+      setServices(servicesData);
+      setServicesCount(servicesData.length);
     } catch (error) {
-      console.error('Error fetching services count:', error);
+      console.error('Error loading services:', error);
     }
   };
 

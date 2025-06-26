@@ -22,7 +22,8 @@ import {
   UserCircle,
   Package
 } from 'lucide-react';
-import { categoriesAPI, servicesAPI } from '../services/api';
+import { db } from '../firebase.config';
+import { collection, getDocs } from 'firebase/firestore';
 
 interface Category {
   id: string;
@@ -34,7 +35,7 @@ interface Category {
 }
 
 interface Service {
-  id: number;
+  id: string;
   name: string;
   category: string;
   categoryName: string;
@@ -52,61 +53,22 @@ const Home: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('🔥 Testing Firebase connection...');
-        
-        // First try Netlify Functions
-        try {
-          const categoriesResponse = await fetch('/.netlify/functions/categories');
-          const servicesResponse = await fetch('/.netlify/functions/services');
-          
-          if (categoriesResponse.ok && servicesResponse.ok) {
-            const categoriesData = await categoriesResponse.json();
-            const servicesData = await servicesResponse.json();
-            
-            console.log('📁 Categories loaded:', categoriesData.length);
-            setCategories(categoriesData || []);
-            
-            console.log('🛠️ Services loaded:', servicesData.length);
-            setServices((servicesData || []).slice(0, 6)); // عرض أول 6 خدمات فقط
-            return;
-          }
-        } catch (netlifyError) {
-          console.log('Netlify Functions not available, using Firebase directly...');
-        }
-
-        // Fallback to Firebase direct access
-        const { initializeApp } = await import('firebase/app');
-        const { getFirestore, collection, getDocs } = await import('firebase/firestore');
-        
-        const firebaseConfig = {
-          apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
-          authDomain: "lbeh-81936.firebaseapp.com",
-          projectId: "lbeh-81936",
-          storageBucket: "lbeh-81936.firebasestorage.app",
-          messagingSenderId: "225834423678",
-          appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        
-        // جلب الفئات
+        // جلب الفئات من Firebase مباشرة
         const categoriesRef = collection(db, 'categories');
         const categoriesSnapshot = await getDocs(categoriesRef);
-        const categoriesData: any[] = [];
+        const categoriesData: Category[] = [];
         
         categoriesSnapshot.forEach((doc) => {
           categoriesData.push({
             id: doc.id,
             ...doc.data()
-          });
+          } as Category);
         });
         
-        console.log('📁 Categories loaded:', categoriesData.length);
         setCategories(categoriesData || []);
 
         // إنشاء الخدمات من الفئات
-        const servicesData: any[] = [];
+        const servicesData: Service[] = [];
         categoriesSnapshot.forEach((doc) => {
           const category = doc.data();
           servicesData.push({
@@ -121,13 +83,10 @@ const Home: React.FC = () => {
           });
         });
         
-        console.log('🛠️ Services loaded:', servicesData.length);
         setServices((servicesData || []).slice(0, 6)); // عرض أول 6 خدمات فقط
-        
 
       } catch (error) {
-        console.error("❌ Error fetching data:", error);
-        // Set empty arrays as fallback
+        console.error("Error fetching data:", error);
         setCategories([]);
         setServices([]);
       } finally {

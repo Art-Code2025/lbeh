@@ -26,7 +26,57 @@ const ContactFooter: React.FC = () => {
   const [showBackToTop, setShowBackToTop] = useState(false);
 
   useEffect(() => {
-    fetchStats();
+    const fetchData = async () => {
+      try {
+        // جلب البيانات من Firebase مباشرة
+        const { initializeApp } = await import('firebase/app');
+        const { getFirestore, collection, getDocs } = await import('firebase/firestore');
+        
+        const firebaseConfig = {
+          apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
+          authDomain: "lbeh-81936.firebaseapp.com",
+          projectId: "lbeh-81936",
+          storageBucket: "lbeh-81936.firebasestorage.app",
+          messagingSenderId: "225834423678",
+          appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // جلب الفئات والخدمات
+        const [servicesSnapshot, categoriesSnapshot] = await Promise.all([
+          getDocs(collection(db, 'services')),
+          getDocs(collection(db, 'categories'))
+        ]);
+        
+        const servicesData: any[] = [];
+        servicesSnapshot.forEach((doc) => {
+          servicesData.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        
+        const categoriesData: any[] = [];
+        categoriesSnapshot.forEach((doc) => {
+          categoriesData.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+
+        setStats(prev => ({
+          ...prev,
+          services: servicesData.length,
+          categories: categoriesData.length
+        }));
+      } catch (error) {
+        console.error('Error loading footer data:', error);
+      }
+    };
+
+    fetchData();
     
     const handleScroll = () => {
       setShowBackToTop(window.scrollY > 300);
@@ -35,61 +85,6 @@ const ContactFooter: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const fetchStats = async () => {
-    try {
-      // First try Netlify Functions
-      try {
-        const [servicesRes, categoriesRes] = await Promise.all([
-          fetch('/.netlify/functions/services'),
-          fetch('/.netlify/functions/categories')
-        ]);
-
-        if (servicesRes.ok && categoriesRes.ok) {
-          const [services, categories] = await Promise.all([
-            servicesRes.json(),
-            categoriesRes.json()
-          ]);
-
-          setStats(prev => ({
-            ...prev,
-            services: services.length,
-            categories: categories.length
-          }));
-          return;
-        }
-      } catch (netlifyError) {
-        console.log('Netlify Functions not available, using Firebase directly...');
-      }
-
-      // Fallback to Firebase direct access
-      const { initializeApp } = await import('firebase/app');
-      const { getFirestore, collection, getDocs } = await import('firebase/firestore');
-      
-      const firebaseConfig = {
-        apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
-        authDomain: "lbeh-81936.firebaseapp.com",
-        projectId: "lbeh-81936",
-        storageBucket: "lbeh-81936.firebasestorage.app",
-        messagingSenderId: "225834423678",
-        appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
-      };
-
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      
-      const categoriesRef = collection(db, 'categories');
-      const snapshot = await getDocs(categoriesRef);
-      
-      setStats(prev => ({
-        ...prev,
-        services: snapshot.size, // عدد الفئات كخدمات
-        categories: snapshot.size
-      }));
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    }
-  };
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });

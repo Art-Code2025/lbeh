@@ -127,23 +127,7 @@ function Services() {
     try {
       setLoading(true);
       
-      // First try Netlify Functions
-      try {
-        const response = await fetch('/.netlify/functions/services');
-        if (response.ok) {
-          const data = await response.json();
-          setServices(data || []);
-          
-          // تجميع الخدمات حسب الفئات
-          const categories = groupServicesByCategory(data || []);
-          setServiceCategories(categories);
-          return;
-        }
-      } catch (netlifyError) {
-        console.log('Netlify Functions not available, using Firebase directly...');
-      }
-
-      // Fallback to Firebase direct access
+      // جلب البيانات من Firebase مباشرة
       const { initializeApp } = await import('firebase/app');
       const { getFirestore, collection, getDocs } = await import('firebase/firestore');
       

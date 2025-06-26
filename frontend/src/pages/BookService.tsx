@@ -51,6 +51,17 @@ interface BookingFormData {
   priority: 'normal' | 'urgent' | 'emergency';
   preferredTime: string;
   notes: string;
+  // خصائص إضافية للفئات المختلفة
+  deliveryLocation?: string;
+  urgentDelivery?: string;
+  startLocation?: string;
+  destination?: string;
+  destinationType?: string;
+  appointmentTime?: string;
+  returnTrip?: string;
+  passengers?: string;
+  issueDescription?: string;
+  urgencyLevel?: string;
 }
 
 const BookService: React.FC = () => {
@@ -77,27 +88,92 @@ const BookService: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<number>(1);
 
   useEffect(() => {
-    if (id) {
-      fetchService(parseInt(id));
-    }
+    const fetchService = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        
+        // جلب الخدمة من Firebase مباشرة
+        const { initializeApp } = await import('firebase/app');
+        const { getFirestore, collection, getDocs } = await import('firebase/firestore');
+        
+        const firebaseConfig = {
+          apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
+          authDomain: "lbeh-81936.firebaseapp.com",
+          projectId: "lbeh-81936",
+          storageBucket: "lbeh-81936.firebasestorage.app",
+          messagingSenderId: "225834423678",
+          appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // البحث عن الفئة
+        const categoriesRef = collection(db, 'categories');
+        const snapshot = await getDocs(categoriesRef);
+        
+        let foundService = null;
+        snapshot.forEach((doc) => {
+          if (doc.id === id) {
+            const category = doc.data();
+            foundService = {
+              id: doc.id,
+              name: category.name,
+              category: doc.id,
+              categoryName: category.name,
+              description: category.description,
+              mainImage: getDefaultImage(doc.id),
+              price: getDefaultPrice(doc.id),
+              duration: getDefaultDuration(doc.id)
+            };
+          }
+        });
+
+        if (foundService) {
+          setService(foundService);
+        } else {
+          setError('الخدمة غير موجودة');
+        }
+      } catch (error: any) {
+        console.error('Error fetching service:', error);
+        setError('خطأ في جلب بيانات الخدمة');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchService();
   }, [id]);
 
-  const fetchService = async (serviceId: number) => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/.netlify/functions/services/${serviceId}`);
-      if (!response.ok) {
-        throw new Error('فشل في جلب بيانات الخدمة');
-      }
-      const data = await response.json();
-      setService(data);
-    } catch (error: any) {
-      setError(error.message);
-      toast.error(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Helper functions
+  function getDefaultImage(categoryId: string) {
+    const images: Record<string, string> = {
+      'internal_delivery': 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55?w=500',
+      'external_trips': 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=500',
+      'home_maintenance': 'https://images.unsplash.com/photo-1585128792020-803d29415281?w=500'
+    };
+    return images[categoryId] || 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=500';
+  }
+
+  function getDefaultPrice(categoryId: string) {
+    const prices: Record<string, string> = {
+      'internal_delivery': 'من 20 ريال',
+      'external_trips': 'من 250 ريال',
+      'home_maintenance': 'حسب الخدمة'
+    };
+    return prices[categoryId] || 'حسب الطلب';
+  }
+
+  function getDefaultDuration(categoryId: string) {
+    const durations: Record<string, string> = {
+      'internal_delivery': '30-60 دقيقة',
+      'external_trips': '2-4 ساعات',
+      'home_maintenance': 'حسب نوع الصيانة'
+    };
+    return durations[categoryId] || 'يحدد عند الطلب';
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -163,29 +239,65 @@ const BookService: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!service) return;
+    
     try {
       setSubmitting(true);
-      const response = await fetch('/.netlify/functions/bookings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          serviceId: service?.id,
-          serviceName: service?.name,
-          serviceCategory: service?.category,
-          ...formData
+      
+      // إرسال الحجز إلى Firebase مباشرة
+      const { initializeApp } = await import('firebase/app');
+      const { getFirestore, collection, addDoc } = await import('firebase/firestore');
+      
+      const firebaseConfig = {
+        apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
+        authDomain: "lbeh-81936.firebaseapp.com",
+        projectId: "lbeh-81936",
+        storageBucket: "lbeh-81936.firebasestorage.app",
+        messagingSenderId: "225834423678",
+        appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      
+      const bookingData = {
+        serviceId: service.id,
+        serviceName: service.name,
+        serviceCategory: service.category,
+        fullName: formData.fullName,
+        phoneNumber: formData.phoneNumber,
+        address: formData.address,
+        serviceDetails: formData.serviceDetails,
+        status: 'pending' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        // إضافة بيانات خاصة بالفئة
+        ...(service.category === 'internal_delivery' && {
+          deliveryLocation: formData.deliveryLocation,
+          urgentDelivery: formData.urgentDelivery === 'true'
+        }),
+        ...(service.category === 'external_trips' && {
+          startLocation: formData.startLocation,
+          destination: formData.destination,
+          destinationType: formData.destinationType,
+          appointmentTime: formData.appointmentTime,
+          returnTrip: formData.returnTrip === 'true',
+          passengers: parseInt(formData.passengers || '1') || 1
+        }),
+        ...(service.category === 'home_maintenance' && {
+          issueDescription: formData.issueDescription,
+          urgencyLevel: formData.urgencyLevel,
+          preferredTime: formData.preferredTime
         })
-      });
+      };
 
-      if (!response.ok) {
-        throw new Error('فشل في إرسال الحجز');
-      }
-
-      toast.success('تم إرسال طلب الحجز بنجاح');
+      await addDoc(collection(db, 'bookings'), bookingData);
+      
+      toast.success('تم إرسال طلب الحجز بنجاح! سيتم التواصل معك قريباً.');
       navigate('/');
     } catch (error: any) {
-      toast.error(error.message);
+      console.error('Error creating booking:', error);
+      toast.error('فشل في إرسال طلب الحجز. يرجى المحاولة مرة أخرى.');
     } finally {
       setSubmitting(false);
     }

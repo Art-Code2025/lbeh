@@ -28,27 +28,113 @@ export default function ServiceDetail() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (id) {
-      fetchService();
-    }
+    const fetchService = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        
+        // جلب الخدمة من Firebase مباشرة
+        const { initializeApp } = await import('firebase/app');
+        const { getFirestore, collection, getDocs } = await import('firebase/firestore');
+        
+        const firebaseConfig = {
+          apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
+          authDomain: "lbeh-81936.firebaseapp.com",
+          projectId: "lbeh-81936",
+          storageBucket: "lbeh-81936.firebasestorage.app",
+          messagingSenderId: "225834423678",
+          appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // البحث عن الفئة
+        const categoriesRef = collection(db, 'categories');
+        const snapshot = await getDocs(categoriesRef);
+        
+        let foundService = null;
+        snapshot.forEach((doc) => {
+          if (doc.id === id) {
+            const category = doc.data();
+            foundService = {
+              id: doc.id,
+              name: category.name,
+              category: doc.id,
+              categoryName: category.name,
+              description: getDetailedDescription(doc.id),
+              mainImage: getDefaultImage(doc.id),
+              detailedImages: [getDefaultImage(doc.id)],
+              features: getDefaultFeatures(doc.id),
+              duration: getDefaultDuration(doc.id),
+              availability: "متاح 24/7",
+              price: getDefaultPrice(doc.id)
+            };
+          }
+        });
+
+        if (foundService) {
+          setService(foundService);
+        } else {
+          setError('الخدمة غير موجودة');
+        }
+      } catch (error: any) {
+        console.error('Error fetching service:', error);
+        setError('خطأ في جلب بيانات الخدمة');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchService();
   }, [id]);
 
-  const fetchService = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/.netlify/functions/services/${id}`);
-      if (!response.ok) {
-        throw new Error('فشل في جلب بيانات الخدمة');
-      }
-      const data = await response.json();
-      setService(data);
-    } catch (error: any) {
-      setError(error.message);
-      toast.error(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Helper functions
+  function getDefaultImage(categoryId: string) {
+    const images: Record<string, string> = {
+      'internal_delivery': 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55?w=500',
+      'external_trips': 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=500',
+      'home_maintenance': 'https://images.unsplash.com/photo-1585128792020-803d29415281?w=500'
+    };
+    return images[categoryId] || 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=500';
+  }
+
+  function getDefaultPrice(categoryId: string) {
+    const prices: Record<string, string> = {
+      'internal_delivery': 'من 20 ريال',
+      'external_trips': 'من 250 ريال',
+      'home_maintenance': 'حسب الخدمة'
+    };
+    return prices[categoryId] || 'حسب الطلب';
+  }
+
+  function getDefaultDuration(categoryId: string) {
+    const durations: Record<string, string> = {
+      'internal_delivery': '30-60 دقيقة',
+      'external_trips': '2-4 ساعات',
+      'home_maintenance': 'حسب نوع الصيانة'
+    };
+    return durations[categoryId] || 'يحدد عند الطلب';
+  }
+
+  function getDefaultFeatures(categoryId: string) {
+    const features: Record<string, string[]> = {
+      'internal_delivery': ['توصيل سريع', 'تتبع الطلب', 'دفع آمن'],
+      'external_trips': ['سائق محترف', 'سيارة مكيفة', 'رحلة آمنة'],
+      'home_maintenance': ['فني مؤهل', 'أدوات متكاملة', 'ضمان الخدمة']
+    };
+    return features[categoryId] || ['خدمة احترافية', 'جودة عالية', 'أسعار منافسة'];
+  }
+
+  function getDetailedDescription(categoryId: string) {
+    const descriptions: Record<string, string> = {
+      'internal_delivery': 'خدمة توصيل داخل المدينة تشمل توصيل الطلبات والمشتريات وجميع احتياجاتك اليومية بسرعة وأمان.',
+      'external_trips': 'رحلات خارجية بين المدن مع سائقين محترفين وسيارات مريحة لضمان وصولك بأمان.',
+      'home_maintenance': 'خدمات الصيانة المنزلية الشاملة تشمل الكهرباء والسباكة والتكييف وجميع أعمال الصيانة.'
+    };
+    return descriptions[categoryId] || 'خدمة متميزة تلبي احتياجاتك بجودة عالية وأسعار منافسة.';
+  }
 
   const handleBookingSubmit = async (formData: any) => {
     try {

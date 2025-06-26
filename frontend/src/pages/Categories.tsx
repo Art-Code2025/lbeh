@@ -17,7 +17,8 @@ import {
   ChevronRight,
   Home as HomeIcon
 } from 'lucide-react';
-import { categoriesAPI, servicesAPI } from '../services/api'; // Import both APIs
+import { db } from '../firebase.config';
+import { collection, getDocs } from 'firebase/firestore';
 
 interface Category {
   id: string;
@@ -29,7 +30,7 @@ interface Category {
 }
 
 interface Service {
-  id: number;
+  id: string;
   name: string;
   category: string;
   categoryName: string;
@@ -47,15 +48,40 @@ const Categories: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [categoriesData, servicesData] = await Promise.all([
-          categoriesAPI.getAll(),
-          servicesAPI.getAll()
-        ]);
+        
+        // جلب الفئات من Firebase مباشرة
+        const categoriesRef = collection(db, 'categories');
+        const categoriesSnapshot = await getDocs(categoriesRef);
+        const categoriesData: Category[] = [];
+        
+        categoriesSnapshot.forEach((doc) => {
+          categoriesData.push({
+            id: doc.id,
+            ...doc.data()
+          } as Category);
+        });
+        
         setCategories(categoriesData || []);
+
+        // إنشاء الخدمات من الفئات
+        const servicesData: Service[] = [];
+        categoriesSnapshot.forEach((doc) => {
+          const category = doc.data();
+          servicesData.push({
+            id: doc.id,
+            name: category.name,
+            category: doc.id,
+            categoryName: category.name,
+            homeShortDescription: category.description,
+            mainImage: getDefaultImage(doc.id),
+            price: getDefaultPrice(doc.id)
+          });
+        });
+        
         setServices(servicesData || []);
+        
       } catch (error) {
         console.error("Failed to fetch data for Categories page:", error);
-        // Optionally set an error state to show in the UI
       } finally {
         setLoading(false);
       }
