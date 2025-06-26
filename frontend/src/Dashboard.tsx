@@ -323,7 +323,7 @@ function Dashboard() {
       const transformedServices: Service[] = data.map(service => ({
         id: service.id, // Keep as string Firebase document ID
         name: service.name || '',
-        category: service.category || '',
+        category: service.categoryId || service.category || '', // Support both old and new structure
         categoryName: service.categoryName || '',
         homeShortDescription: service.homeShortDescription || '',
         detailsShortDescription: service.detailsShortDescription || service.homeShortDescription || '',
@@ -497,6 +497,33 @@ function Dashboard() {
     } catch (error) {
       console.error('Error completely resetting database:', error);
       toast.error('❌ فشل في إعادة تعيين قاعدة البيانات');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateFlexibleDatabase = async () => {
+    if (!window.confirm('🔄 هذا سيحول قاعدة البيانات إلى نظام مرن تماماً حيث يمكن تعديل وحذف جميع الفئات. هل تريد المتابعة؟')) {
+      return;
+    }
+    
+    if (!window.confirm('⚠️ تأكيد أخير: هذا سيحذف جميع الفئات والخدمات الحالية ويعيد إنشاؤها بنظام مرن. هل تريد المتابعة؟')) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      toast.info('🔄 جاري إنشاء قاعدة بيانات مرنة تماماً...');
+      
+      const { createFlexibleDatabase } = await import('./utils/fixDatabase');
+      const result = await createFlexibleDatabase();
+      toast.success(`🎉 تم إنشاء قاعدة بيانات مرنة بنجاح! الآن يمكن تعديل وحذف جميع الفئات. الفئات: ${result.categories}, الخدمات: ${result.services}`);
+      
+      // Refresh all data
+      await loadInitialData();
+    } catch (error) {
+      console.error('Error creating flexible database:', error);
+      toast.error('❌ فشل في إنشاء قاعدة البيانات المرنة');
     } finally {
       setLoading(false);
     }
@@ -771,7 +798,8 @@ function Dashboard() {
         console.log('Updating service with Firebase ID:', editingService.id);
         await updateDoc(doc(db, 'services', editingService.id), {
           name: serviceData.name,
-          category: serviceData.category,
+          categoryId: serviceData.category, // Use categoryId for new structure
+          category: serviceData.category, // Keep for backward compatibility
           categoryName: serviceData.categoryName,
           homeShortDescription: serviceData.homeShortDescription,
           description: serviceData.description || serviceData.homeShortDescription,
@@ -787,7 +815,8 @@ function Dashboard() {
         // Add new service - let Firebase generate the ID
         const serviceToAdd = {
           name: serviceData.name,
-          category: serviceData.category,
+          categoryId: serviceData.category, // Use categoryId for new structure
+          category: serviceData.category, // Keep for backward compatibility
           categoryName: serviceData.categoryName,
           homeShortDescription: serviceData.homeShortDescription,
           description: serviceData.description || serviceData.homeShortDescription,
@@ -942,6 +971,14 @@ function Dashboard() {
             {/* Data Management */}
             <div className="p-3 bg-gray-700 rounded-xl space-y-2">
               <h3 className="text-sm font-medium text-gray-200">إدارة البيانات</h3>
+              <button
+                onClick={handleCreateFlexibleDatabase}
+                disabled={loading}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors border border-purple-500/30 disabled:opacity-50"
+              >
+                <Zap className="w-3 h-3" />
+                نظام مرن تماماً
+              </button>
               <button
                 onClick={handleFixDatabaseStructure}
                 disabled={loading}

@@ -1,140 +1,92 @@
 import { db } from '../firebase.config';
 import { collection, addDoc, getDocs, deleteDoc, doc, setDoc } from 'firebase/firestore';
 
-// Categories with proper structure for the application
-const properCategories = [
+// Flexible categories that can be edited/deleted
+const flexibleCategories = [
   {
-    id: 'internal_delivery',
     name: 'التوصيل والمشاوير الداخلية',
     description: 'خدمات التوصيل والمشاوير داخل المدينة',
     icon: '🚚',
     color: 'blue',
   },
   {
-    id: 'external_trips', 
     name: 'المشاوير الخارجية',
     description: 'الرحلات والمشاوير بين المدن',
     icon: '🗺️',
     color: 'green',
   },
   {
-    id: 'home_maintenance',
-    name: 'الصيانة المنزلية', 
+    name: 'الصيانة المنزلية',
     description: 'خدمات الصيانة والإصلاح المنزلي',
     icon: '🔧',
     color: 'orange',
   }
 ];
 
-const properServices = [
-  {
-    name: 'توصيل طلبات',
-    category: 'internal_delivery',
-    categoryName: 'التوصيل والمشاوير الداخلية',
-    homeShortDescription: 'خدمة توصيل الطلبات والمشتريات',
-    price: 'حسب المسافة',
-    duration: 'حسب الموقع',
-  },
-  {
-    name: 'رحلات بين المدن',
-    category: 'external_trips',
-    categoryName: 'المشاوير الخارجية', 
-    homeShortDescription: 'رحلات آمنة ومريحة بين المدن',
-    price: 'حسب المسافة',
-    duration: 'حسب الوجهة',
-  },
-  {
-    name: 'صيانة عامة',
-    category: 'home_maintenance',
-    categoryName: 'الصيانة المنزلية',
-    homeShortDescription: 'خدمات الصيانة المنزلية المتنوعة', 
-    price: 'حسب نوع الخدمة',
-    duration: 'حسب العمل المطلوب',
-  }
-];
-
-export const fixCategoriesStructure = async () => {
-  console.log('🔧 Fixing categories structure...');
+// Create a completely flexible database structure
+export const createFlexibleDatabase = async () => {
+  console.log('🔄 Creating completely flexible database structure...');
   
   try {
-    // Clear existing categories
+    // Step 1: Clear ALL existing categories (including hardcoded ones)
+    console.log('🗑️ Removing all existing categories...');
     const categoriesSnapshot = await getDocs(collection(db, 'categories'));
     for (const docSnapshot of categoriesSnapshot.docs) {
       await deleteDoc(doc(db, 'categories', docSnapshot.id));
+      console.log(`   Deleted category: ${docSnapshot.id}`);
     }
-    console.log('🗑️ Cleared existing categories');
 
-    // Add categories with proper custom IDs
-    for (const category of properCategories) {
-      const { id, ...categoryData } = category;
-      await setDoc(doc(db, 'categories', id), {
-        ...categoryData,
-        createdAt: new Date().toISOString()
-      });
-    }
-    console.log(`✅ Added ${properCategories.length} categories with proper IDs`);
-
-    // Clear existing services
+    // Step 2: Clear ALL existing services
+    console.log('🗑️ Removing all existing services...');
     const servicesSnapshot = await getDocs(collection(db, 'services'));
     for (const docSnapshot of servicesSnapshot.docs) {
       await deleteDoc(doc(db, 'services', docSnapshot.id));
+      console.log(`   Deleted service: ${docSnapshot.id}`);
     }
-    console.log('🗑️ Cleared existing services');
 
-    // Add services
-    for (const service of properServices) {
-      await addDoc(collection(db, 'services'), {
-        ...service,
+    // Step 3: Create new categories with AUTO-GENERATED IDs (no hardcoding)
+    console.log('✨ Creating new flexible categories...');
+    const categoryIds: string[] = [];
+    
+    for (const category of flexibleCategories) {
+      const docRef = await addDoc(collection(db, 'categories'), {
+        ...category,
         createdAt: new Date().toISOString()
       });
+      categoryIds.push(docRef.id);
+      console.log(`   Created category: ${category.name} with ID: ${docRef.id}`);
     }
-    console.log(`✅ Added ${properServices.length} services`);
 
-    console.log('🎉 Database structure fixed successfully!');
-    
-    return {
-      categories: properCategories.length,
-      services: properServices.length
-    };
-  } catch (error) {
-    console.error('❌ Error fixing database structure:', error);
-    throw error;
-  }
-};
-
-// New function to completely reset and rebuild database
-export const completelyResetDatabase = async () => {
-  console.log('🔄 Completely resetting database...');
-  
-  try {
-    // Get all collections
-    const collections = ['categories', 'services', 'bookings', 'providers'];
-    
-    for (const collectionName of collections) {
-      const snapshot = await getDocs(collection(db, collectionName));
-      console.log(`📊 Found ${snapshot.size} documents in ${collectionName}`);
-      
-      // Only delete categories and services, keep bookings and providers
-      if (collectionName === 'categories' || collectionName === 'services') {
-        for (const docSnapshot of snapshot.docs) {
-          await deleteDoc(doc(db, collectionName, docSnapshot.id));
-        }
-        console.log(`🗑️ Cleared ${collectionName} collection`);
+    // Step 4: Create new services with references to the new category IDs
+    console.log('✨ Creating new flexible services...');
+    const services = [
+      {
+        name: 'توصيل طلبات',
+        categoryId: categoryIds[0], // Reference to first category
+        categoryName: flexibleCategories[0].name,
+        homeShortDescription: 'خدمة توصيل الطلبات والمشتريات',
+        price: 'حسب المسافة',
+        duration: 'حسب الموقع',
+      },
+      {
+        name: 'رحلات بين المدن',
+        categoryId: categoryIds[1], // Reference to second category
+        categoryName: flexibleCategories[1].name,
+        homeShortDescription: 'رحلات آمنة ومريحة بين المدن',
+        price: 'حسب المسافة',
+        duration: 'حسب الوجهة',
+      },
+      {
+        name: 'صيانة عامة',
+        categoryId: categoryIds[2], // Reference to third category
+        categoryName: flexibleCategories[2].name,
+        homeShortDescription: 'خدمات الصيانة المنزلية المتنوعة',
+        price: 'حسب نوع الخدمة',
+        duration: 'حسب العمل المطلوب',
       }
-    }
+    ];
 
-    // Add proper categories with custom IDs
-    for (const category of properCategories) {
-      const { id, ...categoryData } = category;
-      await setDoc(doc(db, 'categories', id), {
-        ...categoryData,
-        createdAt: new Date().toISOString()
-      });
-      console.log(`✅ Added category: ${category.name} with ID: ${id}`);
-    }
-
-    // Add proper services
-    for (const service of properServices) {
+    for (const service of services) {
       const docRef = await addDoc(collection(db, 'services'), {
         ...service,
         description: service.homeShortDescription,
@@ -144,20 +96,32 @@ export const completelyResetDatabase = async () => {
         availability: '24/7',
         createdAt: new Date().toISOString()
       });
-      console.log(`✅ Added service: ${service.name} with ID: ${docRef.id}`);
+      console.log(`   Created service: ${service.name} with ID: ${docRef.id}`);
     }
 
-    console.log('🎉 Database completely reset and rebuilt successfully!');
+    console.log('🎉 Flexible database structure created successfully!');
     
     return {
-      categories: properCategories.length,
-      services: properServices.length,
-      message: 'Database reset completed successfully'
+      categories: flexibleCategories.length,
+      services: services.length,
+      message: 'Flexible database created - all categories are now fully editable and deletable'
     };
   } catch (error) {
-    console.error('❌ Error resetting database:', error);
+    console.error('❌ Error creating flexible database:', error);
     throw error;
   }
+};
+
+// Legacy function for backward compatibility
+export const fixCategoriesStructure = async () => {
+  console.log('⚠️ Using legacy fix - consider using createFlexibleDatabase instead');
+  return await createFlexibleDatabase();
+};
+
+// New function to completely reset and rebuild database
+export const completelyResetDatabase = async () => {
+  console.log('🔄 Completely resetting database to flexible structure...');
+  return await createFlexibleDatabase();
 };
 
 export const checkDatabaseStructure = async () => {
@@ -176,7 +140,8 @@ export const checkDatabaseStructure = async () => {
 
     console.log('📊 Current services:');
     servicesSnapshot.forEach(doc => {
-      console.log(`  - ID: ${doc.id}, Name: ${doc.data().name}, Category: ${doc.data().category}`);
+      const data = doc.data();
+      console.log(`  - ID: ${doc.id}, Name: ${data.name}, CategoryID: ${data.categoryId || data.category}`);
     });
 
     return {
