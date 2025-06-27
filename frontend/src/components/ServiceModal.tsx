@@ -101,11 +101,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     if (!isOpen) return; // لا تفعل شيئاً إذا كان Modal مغلق
     
     console.log('🔄 useEffect triggered - isOpen:', isOpen, 'editingService:', editingService);
-    console.log('🔄 Current state before reset:', {
-      uploadedImageUrl,
-      imagePreview,
-      formDataMainImage: formData.mainImage
-    });
     
     if (editingService) {
       // تعديل خدمة موجودة
@@ -127,71 +122,35 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       // تعيين معاينة الصورة إذا كانت موجودة
       if (editingService.mainImage) {
         setImagePreview(editingService.mainImage);
-        setUploadedImageUrl(editingService.mainImage); // حفظ URL الموجود
+        setUploadedImageUrl(editingService.mainImage);
       } else {
         setImagePreview(null);
         setUploadedImageUrl('');
       }
     } else {
-      // إضافة خدمة جديدة - فقط إذا لم تكن هناك صورة مرفوعة حديثاً
-      // التحقق من وجود صورة مرفوعة قبل إعادة التعيين
-      const hasUploadedImage = uploadedImageUrl && isCloudinaryUrl(uploadedImageUrl);
-      const hasPreviewImage = imagePreview && isCloudinaryUrl(imagePreview);
+      // إضافة خدمة جديدة - لا تمسح البيانات إذا كان Modal مفتوح بالفعل
+      // فقط إعادة تعيين عند فتح Modal لأول مرة
+      console.log('🆕 إضافة خدمة جديدة');
       
-      console.log('🆕 إضافة خدمة جديدة - فحص الصور:', {
-        hasUploadedImage,
-        hasPreviewImage,
-        uploadedImageUrl,
-        imagePreview
-      });
+      // إعادة تعيين البيانات النصية فقط، والاحتفاظ بالصور
+      setFormData(prev => ({
+        name: '',
+        category: '',
+        categoryName: '',
+        homeShortDescription: '',
+        detailsShortDescription: '',
+        description: '',
+        mainImage: prev.mainImage, // احتفظ بالصورة الموجودة
+        features: [],
+        duration: '',
+        availability: '',
+        price: ''
+      }));
       
-      if (!hasUploadedImage && !hasPreviewImage) {
-        // إعادة تعيين فقط إذا لم تكن هناك صورة مرفوعة
-        console.log('🔄 إعادة تعيين كاملة - لا توجد صور');
-        setFormData({
-          name: '',
-          category: '',
-          categoryName: '',
-          homeShortDescription: '',
-          detailsShortDescription: '',
-          description: '',
-          mainImage: '',
-          features: [],
-          duration: '',
-          availability: '',
-          price: ''
-        });
-        setImagePreview(null);
-        setUploadedImageUrl('');
-      } else {
-        // الاحتفاظ بالصورة المرفوعة وإعادة تعيين باقي البيانات فقط
-        const preservedImage = hasUploadedImage ? uploadedImageUrl : (hasPreviewImage ? imagePreview : '');
-        console.log('🔒 الاحتفاظ بالصورة المرفوعة:', preservedImage);
-        
-        setFormData(prev => ({
-          name: '',
-          category: '',
-          categoryName: '',
-          homeShortDescription: '',
-          detailsShortDescription: '',
-          description: '',
-          mainImage: preservedImage,
-          features: [],
-          duration: '',
-          availability: '',
-          price: ''
-        }));
-        
-        console.log('🔄 الاحتفاظ بالصورة المرفوعة في خدمة جديدة:', {
-          uploadedImageUrl,
-          imagePreview,
-          hasUploadedImage,
-          hasPreviewImage,
-          preservedImage
-        });
-      }
+      // لا تمسح الصور إذا كانت موجودة
+      console.log('🔒 الاحتفاظ بحالة الصور الحالية');
     }
-  }, [editingService, isOpen]); // إضافة isOpen مرة أخرى مع حماية
+  }, [editingService]); // إزالة isOpen من dependencies
 
   // useEffect منفصل لإعادة تعيين connectionTested عند فتح Modal
   useEffect(() => {
@@ -199,9 +158,29 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       testConnection();
     }
     
-    // إعادة تعيين connectionTested عند إغلاق Modal
+    // إعادة تعيين البيانات عند إغلاق Modal
     if (!isOpen) {
+      console.log('🔄 إغلاق Modal - إعادة تعيين البيانات');
       setConnectionTested(false);
+      
+      // إعادة تعيين كاملة عند الإغلاق
+      setFormData({
+        name: '',
+        category: '',
+        categoryName: '',
+        homeShortDescription: '',
+        detailsShortDescription: '',
+        description: '',
+        mainImage: '',
+        features: [],
+        duration: '',
+        availability: '',
+        price: ''
+      });
+      setImagePreview(null);
+      setUploadedImageUrl('');
+      setUploading(false);
+      setUploadProgress(0);
     }
   }, [isOpen]);
 
@@ -442,28 +421,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     // حفظ البيانات
     onSave(serviceData);
     
-    // تأخير قصير قبل إعادة التعيين لضمان الحفظ
-    setTimeout(() => {
-      // إعادة تعيين البيانات بعد الحفظ الناجح
-      setFormData({
-        name: '',
-        category: '',
-        categoryName: '',
-        homeShortDescription: '',
-        detailsShortDescription: '',
-        description: '',
-        mainImage: '',
-        features: [],
-        duration: '',
-        availability: '',
-        price: ''
-      });
-      setImagePreview(null);
-      setUploadedImageUrl('');
-      
-      onClose();
-      toast.success('🎉 تم حفظ الخدمة بنجاح!');
-    }, 100);
+    // إغلاق Modal فوراً - إعادة التعيين ستحدث تلقائياً
+    onClose();
+    toast.success('🎉 تم حفظ الخدمة بنجاح!');
   };
 
   if (!isOpen) return null;
