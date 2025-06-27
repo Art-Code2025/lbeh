@@ -44,9 +44,24 @@ export const uploadImageToFirebase = async (file: File, folder: string = 'servic
     toast.success('تم رفع الصورة بنجاح إلى Firebase Storage');
     
     return downloadURL;
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ خطأ في رفع الصورة:', error);
-    toast.error('فشل في رفع الصورة: ' + (error as Error).message);
+    
+    // معالجة أخطاء CORS
+    if (error.code === 'storage/unknown' || error.message?.includes('CORS')) {
+      toast.error('❌ مشكلة في إعدادات Firebase Storage CORS. يرجى مراجعة دليل الإعداد.');
+      console.error('🔧 CORS Issue: يرجى إعداد Firebase Storage Rules أو CORS settings');
+      console.error('📖 راجع ملف FIREBASE_STORAGE_SETUP.md للحلول');
+    } else if (error.code === 'storage/unauthorized') {
+      toast.error('❌ ليس لديك صلاحية لرفع الصور. تحقق من Firebase Storage Rules');
+    } else if (error.code === 'storage/quota-exceeded') {
+      toast.error('❌ تم تجاوز حد التخزين المسموح في Firebase Storage');
+    } else if (error.code === 'storage/invalid-format') {
+      toast.error('❌ تنسيق الصورة غير مدعوم');
+    } else {
+      toast.error('❌ فشل في رفع الصورة: ' + (error.message || 'خطأ غير معروف'));
+    }
+    
     return null;
   }
 };
@@ -77,8 +92,14 @@ export const deleteImageFromFirebase = async (imageUrl: string): Promise<boolean
     
     console.log('✅ تم حذف الصورة بنجاح');
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ خطأ في حذف الصورة:', error);
+    
+    if (error.code === 'storage/object-not-found') {
+      console.log('ℹ️ الصورة غير موجودة (ربما تم حذفها مسبقاً)');
+      return true; // اعتبرها نجاح لأن الهدف تحقق
+    }
+    
     return false;
   }
 };
@@ -112,6 +133,7 @@ export const testFirebaseStorageConnection = async (): Promise<boolean> => {
     return new Promise((resolve) => {
       canvas.toBlob(async (blob) => {
         if (!blob) {
+          console.error('❌ فشل في إنشاء صورة تجريبية');
           resolve(false);
           return;
         }
@@ -135,6 +157,72 @@ export const testFirebaseStorageConnection = async (): Promise<boolean> => {
   } catch (error) {
     console.error('❌ Firebase Storage connection test error:', error);
     return false;
+  }
+};
+
+/**
+ * اختبار إعدادات Firebase Storage
+ */
+export const diagnoseFirebaseStorage = async (): Promise<{
+  configured: boolean;
+  corsIssue: boolean;
+  rulesIssue: boolean;
+  message: string;
+}> => {
+  try {
+    console.log('🔍 تشخيص Firebase Storage...');
+    
+    // اختبار إنشاء مرجع
+    const testRef = ref(storage, 'test/diagnosis.txt');
+    console.log('✅ Firebase Storage reference created successfully');
+    
+    // محاولة رفع ملف نصي صغير
+    const testData = new Uint8Array([72, 101, 108, 108, 111]); // "Hello"
+    
+    try {
+      await uploadBytes(testRef, testData);
+      await deleteObject(testRef);
+      
+      return {
+        configured: true,
+        corsIssue: false,
+        rulesIssue: false,
+        message: '✅ Firebase Storage يعمل بشكل مثالي!'
+      };
+    } catch (uploadError: any) {
+      console.error('Upload test failed:', uploadError);
+      
+      if (uploadError.code === 'storage/unauthorized') {
+        return {
+          configured: true,
+          corsIssue: false,
+          rulesIssue: true,
+          message: '❌ مشكلة في Firebase Storage Rules. يرجى تحديث القواعد للسماح بالكتابة.'
+        };
+      } else if (uploadError.message?.includes('CORS') || uploadError.code === 'storage/unknown') {
+        return {
+          configured: true,
+          corsIssue: true,
+          rulesIssue: false,
+          message: '❌ مشكلة CORS. يرجى إعداد CORS settings في Firebase Storage.'
+        };
+      } else {
+        return {
+          configured: false,
+          corsIssue: false,
+          rulesIssue: false,
+          message: `❌ خطأ غير متوقع: ${uploadError.message}`
+        };
+      }
+    }
+  } catch (error: any) {
+    console.error('❌ Firebase Storage diagnosis failed:', error);
+    return {
+      configured: false,
+      corsIssue: false,
+      rulesIssue: false,
+      message: `❌ Firebase Storage غير مُعد بشكل صحيح: ${error.message}`
+    };
   }
 };
 

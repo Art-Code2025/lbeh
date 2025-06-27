@@ -71,7 +71,7 @@ import { seedOnlyMissingData, clearAllCollections, seedFirebaseData } from './ut
 import { fixCategoriesStructure, checkDatabaseStructure, completelyResetDatabase } from './utils/fixDatabase';
 import { db } from './firebase.config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import { testFirebaseStorageConnection } from './services/firebaseStorage';
+import { testFirebaseStorageConnection, diagnoseFirebaseStorage } from './services/firebaseStorage';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement);
 
@@ -889,6 +889,33 @@ function Dashboard() {
     }
   };
 
+  const handleDiagnoseFirebaseStorage = async () => {
+    try {
+      setLoading(true);
+      toast.info('🔍 جاري تشخيص Firebase Storage...');
+      
+      const diagnosis = await diagnoseFirebaseStorage();
+      
+      if (diagnosis.configured && !diagnosis.corsIssue && !diagnosis.rulesIssue) {
+        toast.success(diagnosis.message);
+      } else {
+        toast.error(diagnosis.message);
+        
+        if (diagnosis.corsIssue) {
+          console.error('🔧 CORS Issue detected. Check FIREBASE_STORAGE_SETUP.md for solutions.');
+        }
+        if (diagnosis.rulesIssue) {
+          console.error('🔧 Rules Issue detected. Update Firebase Storage Rules.');
+        }
+      }
+    } catch (error) {
+      console.error('Error diagnosing Firebase Storage:', error);
+      toast.error('❌ فشل في تشخيص Firebase Storage');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -1036,6 +1063,14 @@ function Dashboard() {
               >
                 <Upload className="w-3 h-3" />
                 اختبار رفع الصور
+              </button>
+              <button
+                onClick={handleDiagnoseFirebaseStorage}
+                disabled={loading}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs bg-yellow-500/20 text-yellow-400 rounded-lg hover:bg-yellow-500/30 transition-colors border border-yellow-500/30 disabled:opacity-50"
+              >
+                <Shield className="w-3 h-3" />
+                تشخيص Firebase Storage
               </button>
             </div>
 
