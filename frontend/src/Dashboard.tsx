@@ -789,18 +789,18 @@ function Dashboard() {
 
   const handleServiceSave = async (serviceData: Service) => {
     try {
-      console.log('💾 Saving service with Firebase Storage image:', {
+      console.log('💾 حفظ الخدمة مع صور Cloudinary:', {
         name: serviceData.name,
-        mainImage: serviceData.mainImage ? 'Present' : 'Not present',
-        isFirebaseStorageMainImage: serviceData.mainImage?.includes('firebasestorage.googleapis.com') || false,
+        mainImage: serviceData.mainImage ? 'موجود' : 'غير موجود',
+        isCloudinaryMainImage: serviceData.mainImage?.includes('cloudinary.com') || false,
         features: serviceData.features?.length || 0
       });
 
-      // التأكد من أن الصورة من Firebase Storage
+      // التأكد من أن الصورة من Cloudinary
       const mainImageUrl = serviceData.mainImage || '';
       
-      if (mainImageUrl && !mainImageUrl.includes('firebasestorage.googleapis.com') && !mainImageUrl.startsWith('data:')) {
-        console.warn('⚠️ Main image is not from Firebase Storage:', mainImageUrl);
+      if (mainImageUrl && !mainImageUrl.includes('cloudinary.com') && !mainImageUrl.startsWith('data:')) {
+        console.warn('⚠️ الصورة الرئيسية ليست من Cloudinary:', mainImageUrl);
       }
 
       const serviceToSave = {

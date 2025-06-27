@@ -49,6 +49,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   // This solves the stale state issue when saving the form.
   useEffect(() => {
     if (imagePreview && isCloudinaryUrl(imagePreview)) {
+      console.log('🔄 تحديث formData.mainImage مع Cloudinary URL:', imagePreview);
       setFormData(prev => ({
         ...prev,
         mainImage: imagePreview
@@ -178,7 +179,14 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
 
           setImagePreview(optimizedUrl);
           
+          // تحديث formData مباشرة للتأكد من الحفظ الصحيح
+          setFormData(prev => ({
+            ...prev,
+            mainImage: optimizedUrl
+          }));
+          
           console.log('🎉 Upload successful, optimized URL generated:', optimizedUrl);
+          console.log('📋 تم تحديث formData.mainImage:', optimizedUrl);
           toast.success('🎉 تم رفع الصورة بنجاح!');
 
         } else {
@@ -247,6 +255,14 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       ...formData,
       mainImage: formData.mainImage || '',
     };
+    
+    console.log('🔍 تفاصيل البيانات قبل الحفظ:', {
+      imagePreview: imagePreview,
+      formDataMainImage: formData.mainImage,
+      serviceDataMainImage: serviceData.mainImage,
+      isCloudinaryPreview: imagePreview ? isCloudinaryUrl(imagePreview) : false,
+      isCloudinaryFormData: formData.mainImage ? isCloudinaryUrl(formData.mainImage) : false
+    });
     
     console.log('💾 حفظ الخدمة مع صور Cloudinary:', {
       mainImage: serviceData.mainImage ? 'Cloudinary URL موجود' : 'لا توجد صورة رئيسية',
