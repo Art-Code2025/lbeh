@@ -75,14 +75,19 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     if (uploadedImageUrl === '') {
       console.log('⚠️ تحذير: uploadedImageUrl تم مسحه!');
       console.trace('Stack trace لمعرفة من مسح uploadedImageUrl');
+    } else if (uploadedImageUrl && isCloudinaryUrl(uploadedImageUrl)) {
+      console.log('✅ uploadedImageUrl محفوظ بنجاح:', uploadedImageUrl);
     }
   }, [uploadedImageUrl]);
 
   // مراقبة تغييرات imagePreview
   useEffect(() => {
     console.log('🖼️ imagePreview تغير إلى:', imagePreview);
-    if (imagePreview === null && uploadedImageUrl) {
-      console.log('⚠️ تحذير: imagePreview تم مسحه بينما uploadedImageUrl موجود!');
+    if (imagePreview === null) {
+      console.log('⚠️ تحذير: imagePreview تم مسحه!');
+      console.trace('Stack trace لمعرفة من مسح imagePreview');
+    } else if (imagePreview && isCloudinaryUrl(imagePreview)) {
+      console.log('✅ imagePreview محفوظ بنجاح:', imagePreview);
     }
   }, [imagePreview]);
 
@@ -93,6 +98,10 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       console.log('🔍 هل هو Cloudinary URL؟', isCloudinaryUrl(formData.mainImage));
     } else {
       console.log('📋 formData.mainImage تم مسحه');
+      if (uploadedImageUrl || imagePreview) {
+        console.log('⚠️ تحذير: formData.mainImage مسح بينما المتغيرات الأخرى موجودة!');
+        console.trace('Stack trace لمعرفة من مسح formData.mainImage');
+      }
     }
   }, [formData.mainImage]);
 
@@ -201,11 +210,22 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-      categoryName: name === 'category' ? categories.find(c => c.id === value)?.name || '' : prev.categoryName
-    }));
+    console.log('📝 تغيير input:', name, '=', value);
+    
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [name]: value,
+        categoryName: name === 'category' ? categories.find(c => c.id === value)?.name || '' : prev.categoryName
+      };
+      
+      // تحذير إذا تم مسح mainImage بالخطأ
+      if (name !== 'mainImage' && prev.mainImage && !newData.mainImage) {
+        console.log('⚠️ تحذير: mainImage تم مسحه أثناء تحديث', name);
+      }
+      
+      return newData;
+    });
   };
 
   const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -350,80 +370,90 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       formDataCategory: formData.category
     });
     
-    // منع الحفظ أثناء رفع الصورة
-    if (uploading) {
-      toast.error('⏳ يرجى انتظار انتهاء رفع الصورة');
-      return;
-    }
-    
-    if (!formData.name || !formData.category) {
-      toast.error('❌ يرجى ملء جميع الحقول المطلوبة');
-      return;
-    }
-    
-    // التأكد من أن الصور محفوظة في Cloudinary - استخدام أولوية متدرجة
-    let finalMainImage = '';
-    
-    // الأولوية الأولى: uploadedImageUrl (الأكثر موثوقية)
-    if (uploadedImageUrl && isCloudinaryUrl(uploadedImageUrl)) {
-      finalMainImage = uploadedImageUrl;
-      console.log('✅ استخدام uploadedImageUrl:', finalMainImage);
-    }
-    // الأولوية الثانية: formData.mainImage
-    else if (formData.mainImage && isCloudinaryUrl(formData.mainImage)) {
-      finalMainImage = formData.mainImage;
-      console.log('✅ استخدام formData.mainImage:', finalMainImage);
-    }
-    // الأولوية الثالثة: imagePreview
-    else if (imagePreview && isCloudinaryUrl(imagePreview)) {
-      finalMainImage = imagePreview;
-      console.log('✅ استخدام imagePreview:', finalMainImage);
-    }
-    // لا توجد صورة صالحة
-    else {
-      finalMainImage = '';
-      console.log('⚠️ لا توجد صورة Cloudinary صالحة');
-    }
-    
-    const serviceData = {
-      ...formData,
-      mainImage: finalMainImage,
-    };
-    
-    console.log('🔍 تفاصيل البيانات قبل الحفظ:', {
-      uploadedImageUrl: uploadedImageUrl,
-      imagePreview: imagePreview,
-      formDataMainImage: formData.mainImage,
-      finalMainImage: finalMainImage,
-      serviceDataMainImage: serviceData.mainImage,
-      isCloudinaryUploadedUrl: uploadedImageUrl ? isCloudinaryUrl(uploadedImageUrl) : false,
-      isCloudinaryPreview: imagePreview ? isCloudinaryUrl(imagePreview) : false,
-      isCloudinaryFormData: formData.mainImage ? isCloudinaryUrl(formData.mainImage) : false,
-      uploading: uploading,
-      serviceDataComplete: serviceData
-    });
-    
-    console.log('💾 حفظ الخدمة مع صور Cloudinary:', {
-      name: serviceData.name,
-      mainImage: serviceData.mainImage ? 'Cloudinary URL موجود' : 'لا توجد صورة رئيسية',
-      isCloudinaryMainImage: serviceData.mainImage ? isCloudinaryUrl(serviceData.mainImage) : false,
-      featuresCount: serviceData.features.length,
-      actualURL: serviceData.mainImage
-    });
-    
-    // التحقق النهائي قبل الحفظ
-    if (serviceData.mainImage && !isCloudinaryUrl(serviceData.mainImage)) {
-      console.error('❌ خطأ: الصورة ليست من Cloudinary:', serviceData.mainImage);
-      toast.error('❌ خطأ في حفظ الصورة - يرجى المحاولة مرة أخرى');
-      return;
-    }
-    
-    // حفظ البيانات
-    onSave(serviceData);
-    
-    // إغلاق Modal فوراً - إعادة التعيين ستحدث تلقائياً
-    onClose();
-    toast.success('🎉 تم حفظ الخدمة بنجاح!');
+    // فحص نهائي للحالة قبل المتابعة
+    setTimeout(() => {
+      console.log('🔍 فحص نهائي قبل الحفظ مباشرة:', {
+        uploadedImageUrl,
+        imagePreview,
+        formDataMainImage: formData.mainImage,
+        timestamp: new Date().toISOString()
+      });
+      
+      // منع الحفظ أثناء رفع الصورة
+      if (uploading) {
+        toast.error('⏳ يرجى انتظار انتهاء رفع الصورة');
+        return;
+      }
+      
+      if (!formData.name || !formData.category) {
+        toast.error('❌ يرجى ملء جميع الحقول المطلوبة');
+        return;
+      }
+      
+      // التأكد من أن الصور محفوظة في Cloudinary - استخدام أولوية متدرجة
+      let finalMainImage = '';
+      
+      // الأولوية الأولى: uploadedImageUrl (الأكثر موثوقية)
+      if (uploadedImageUrl && isCloudinaryUrl(uploadedImageUrl)) {
+        finalMainImage = uploadedImageUrl;
+        console.log('✅ استخدام uploadedImageUrl:', finalMainImage);
+      }
+      // الأولوية الثانية: formData.mainImage
+      else if (formData.mainImage && isCloudinaryUrl(formData.mainImage)) {
+        finalMainImage = formData.mainImage;
+        console.log('✅ استخدام formData.mainImage:', finalMainImage);
+      }
+      // الأولوية الثالثة: imagePreview
+      else if (imagePreview && isCloudinaryUrl(imagePreview)) {
+        finalMainImage = imagePreview;
+        console.log('✅ استخدام imagePreview:', finalMainImage);
+      }
+      // لا توجد صورة صالحة
+      else {
+        finalMainImage = '';
+        console.log('⚠️ لا توجد صورة Cloudinary صالحة');
+      }
+      
+      const serviceData = {
+        ...formData,
+        mainImage: finalMainImage,
+      };
+      
+      console.log('🔍 تفاصيل البيانات قبل الحفظ:', {
+        uploadedImageUrl: uploadedImageUrl,
+        imagePreview: imagePreview,
+        formDataMainImage: formData.mainImage,
+        finalMainImage: finalMainImage,
+        serviceDataMainImage: serviceData.mainImage,
+        isCloudinaryUploadedUrl: uploadedImageUrl ? isCloudinaryUrl(uploadedImageUrl) : false,
+        isCloudinaryPreview: imagePreview ? isCloudinaryUrl(imagePreview) : false,
+        isCloudinaryFormData: formData.mainImage ? isCloudinaryUrl(formData.mainImage) : false,
+        uploading: uploading,
+        serviceDataComplete: serviceData
+      });
+      
+      console.log('💾 حفظ الخدمة مع صور Cloudinary:', {
+        name: serviceData.name,
+        mainImage: serviceData.mainImage ? 'Cloudinary URL موجود' : 'لا توجد صورة رئيسية',
+        isCloudinaryMainImage: serviceData.mainImage ? isCloudinaryUrl(serviceData.mainImage) : false,
+        featuresCount: serviceData.features.length,
+        actualURL: serviceData.mainImage
+      });
+      
+      // التحقق النهائي قبل الحفظ
+      if (serviceData.mainImage && !isCloudinaryUrl(serviceData.mainImage)) {
+        console.error('❌ خطأ: الصورة ليست من Cloudinary:', serviceData.mainImage);
+        toast.error('❌ خطأ في حفظ الصورة - يرجى المحاولة مرة أخرى');
+        return;
+      }
+      
+      // حفظ البيانات
+      onSave(serviceData);
+      
+      // إغلاق Modal فوراً - إعادة التعيين ستحدث تلقائياً
+      onClose();
+      toast.success('🎉 تم حفظ الخدمة بنجاح!');
+    }, 10); // تأخير قصير جداً للتأكد من استقرار الحالة
   };
 
   if (!isOpen) return null;
@@ -443,7 +473,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" onFocus={() => console.log('🎯 Form focused')} onClick={() => console.log('🖱️ Form clicked')}>
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -456,6 +486,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
+                onFocus={() => console.log('🎯 Name input focused')}
                 autoComplete="organization-title"
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
                 placeholder="أدخل اسم الخدمة"
@@ -472,6 +503,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 name="category"
                 value={formData.category}
                 onChange={handleInputChange}
+                onFocus={() => console.log('🎯 Category select focused')}
                 autoComplete="off"
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
                 required
