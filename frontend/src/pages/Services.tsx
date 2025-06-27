@@ -19,14 +19,15 @@ import {
   Users,
   AlertCircle,
   Calendar,
-  Shield
+  Shield,
+  ChevronRight
 } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 // تعريف نوع الخدمة
 interface Service {
-  id: number;
+  id: string;
   name: string;
   category: string;
   categoryName: string;
@@ -52,29 +53,35 @@ interface ServiceCategory {
   services: Service[];
 }
 
-const services = [
-  {
-    id: 'local-delivery',
-    title: 'مشاوير داخلية',
-    description: 'خدمة توصيل سريعة وموثوقة داخل المدينة',
-    icon: '🚗',
-    color: 'cyan'
+interface Category {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+}
+
+// خيارات مخصصة لكل فئة حسب طلب المستخدم
+const categoryOptions = {
+  'internal_delivery': {
+    name: 'خدمة توصيل أغراض داخلي',
+    price: '20 ريال',
+    options: ['صيدلية', 'بقالة', 'مستشفى', 'توصيلات أونلاين']
   },
-  {
-    id: 'external-delivery',
-    title: 'مشاوير خارجية',
-    description: 'خدمة توصيل آمنة وسريعة بين المدن',
-    icon: '🚚',
-    color: 'blue'
+  'external_trips': {
+    name: 'مشاوير خارجية',
+    destinations: {
+      'خميس مشيط': { price: '250 ريال', duration: '9 ساعات كحد أقصى' },
+      'أبها': { price: '300 ريال', duration: '9 ساعات كحد أقصى' }
+    },
+    options: ['حجز مستشفى', 'حجز مشغل', 'الحدائق', 'المرافق العامة', 'المطار']
   },
-  {
-    id: 'maintenance',
-    title: 'صيانة شاملة',
-    description: 'خدمات صيانة متكاملة لمنزلك وسيارتك',
-    icon: '🔧',
-    color: 'teal'
+  'home_maintenance': {
+    name: 'صيانة منزلية',
+    price: 'على حسب المطلوب',
+    options: ['سباكة', 'كهرباء', 'نظافة عامة']
   }
-];
+};
 
 function Services() {
   const [searchParams] = useSearchParams();
@@ -86,10 +93,11 @@ function Services() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // جلب الخدمات من الخادم
   useEffect(() => {
-    fetchServices();
+    fetchData();
   }, []);
 
   // تطبيق فلتر الفئة من URL
@@ -123,11 +131,20 @@ function Services() {
     setFilteredServices(filtered);
   }, [services, selectedCategory, searchTerm]);
 
-  const fetchServices = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      
-      // جلب البيانات من Firebase مباشرة
+      await Promise.all([fetchCategories(), fetchServices()]);
+    } catch (error) {
+      console.error('❌ Error fetching data:', error);
+      setError('فشل في تحميل البيانات');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
       const { initializeApp } = await import('firebase/app');
       const { getFirestore, collection, getDocs } = await import('firebase/firestore');
       
@@ -143,7 +160,45 @@ function Services() {
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       
-      // جلب الخدمات الفعلية من مجموعة services
+      const categoriesRef = collection(db, 'categories');
+      const categoriesSnapshot = await getDocs(categoriesRef);
+      const categoriesData: Category[] = [];
+      
+      categoriesSnapshot.forEach((doc) => {
+        const categoryData = doc.data();
+        categoriesData.push({
+          id: doc.id,
+          name: categoryData.name || '',
+          description: categoryData.description || '',
+          icon: categoryData.icon || '📦',
+          color: categoryData.color || 'blue'
+        });
+      });
+
+      setCategories(categoriesData);
+      console.log('✅ Categories loaded:', categoriesData.length);
+    } catch (error) {
+      console.error('❌ Error fetching categories:', error);
+    }
+  };
+
+  const fetchServices = async () => {
+    try {
+      const { initializeApp } = await import('firebase/app');
+      const { getFirestore, collection, getDocs } = await import('firebase/firestore');
+      
+      const firebaseConfig = {
+        apiKey: "AIzaSyCU3gkAwZGeyww7XjcODeEjl-kS9AcOyio",
+        authDomain: "lbeh-81936.firebaseapp.com",
+        projectId: "lbeh-81936",
+        storageBucket: "lbeh-81936.firebasestorage.app",
+        messagingSenderId: "225834423678",
+        appId: "1:225834423678:web:5955d5664e2a4793c40f2f"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      
       const servicesRef = collection(db, 'services');
       const servicesSnapshot = await getDocs(servicesRef);
       const servicesData: Service[] = [];
@@ -151,52 +206,32 @@ function Services() {
       servicesSnapshot.forEach((doc) => {
         const serviceData = doc.data();
         servicesData.push({
-          id: parseInt(doc.id) || Math.floor(Math.random() * 10000), // Convert string ID to number
+          id: doc.id,
           name: serviceData.name || '',
           category: serviceData.categoryId || serviceData.category || '',
           categoryName: serviceData.categoryName || '',
           homeShortDescription: serviceData.homeShortDescription || '',
           detailsShortDescription: serviceData.detailsShortDescription || serviceData.homeShortDescription || '',
           description: serviceData.description || serviceData.homeShortDescription || '',
-          mainImage: serviceData.mainImage || '',
+          mainImage: serviceData.mainImage || getDefaultImage(serviceData.categoryId || serviceData.category || ''),
           detailedImages: serviceData.detailedImages || [],
           imageDetails: serviceData.imageDetails || [],
-          features: serviceData.features || [],
-          duration: serviceData.duration || '',
+          features: serviceData.features || getDefaultFeatures(serviceData.categoryId || serviceData.category || ''),
+          duration: serviceData.duration || getDefaultDuration(serviceData.categoryId || serviceData.category || ''),
           availability: serviceData.availability || "متاح 24/7",
-          price: serviceData.price || serviceData.pricing || ''
+          price: serviceData.price || serviceData.pricing || getDefaultPrice(serviceData.categoryId || serviceData.category || '')
         });
-      });
-
-      // جلب الفئات أيضاً لعرض أسماء الفئات
-      const categoriesRef = collection(db, 'categories');
-      const categoriesSnapshot = await getDocs(categoriesRef);
-      const categoriesMap: Record<string, string> = {};
-      
-      categoriesSnapshot.forEach((doc) => {
-        const categoryData = doc.data();
-        categoriesMap[doc.id] = categoryData.name;
-      });
-
-      // تحديث أسماء الفئات في الخدمات
-      servicesData.forEach(service => {
-        if (categoriesMap[service.category]) {
-          service.categoryName = categoriesMap[service.category];
-        }
       });
 
       setServices(servicesData);
       
       // تجميع الخدمات حسب الفئات
-      const categories = groupServicesByCategory(servicesData);
-      setServiceCategories(categories);
+      const groupedCategories = groupServicesByCategory(servicesData);
+      setServiceCategories(groupedCategories);
       
       console.log('✅ Services loaded:', servicesData.length);
     } catch (error) {
       console.error('❌ Error fetching services:', error);
-      setError('فشل في تحميل الخدمات');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -248,7 +283,6 @@ function Services() {
 
   // تجميع الخدمات حسب الفئات
   const groupServicesByCategory = (services: Service[]): ServiceCategory[] => {
-    // إنشاء فئات ديناميكية بناء على الخدمات الموجودة
     const categoryMap = new Map<string, ServiceCategory>();
     
     services.forEach(service => {
@@ -294,6 +328,43 @@ function Services() {
   const getImageSrc = (image: string) => {
     return image;
   };
+
+  const getIconComponent = (iconString: string) => {
+    switch (iconString) {
+      case '🚚': return <Truck className="w-6 h-6" />;
+      case '🗺️': return <MapPin className="w-6 h-6" />;
+      case '🔧': return <Wrench className="w-6 h-6" />;
+      default: return <Package className="w-6 h-6" />;
+    }
+  };
+
+  const getColorClass = (color: string) => {
+    const colorClasses: Record<string, string> = {
+      'blue': 'bg-blue-500/20 text-blue-400',
+      'green': 'bg-green-500/20 text-green-400',
+      'orange': 'bg-orange-500/20 text-orange-400',
+      'purple': 'bg-purple-500/20 text-purple-400',
+      'red': 'bg-red-500/20 text-red-400',
+      'cyan': 'bg-cyan-500/20 text-cyan-400'
+    };
+    return colorClasses[color] || 'bg-blue-500/20 text-blue-400';
+  };
+
+  // تصفية الخدمات
+  const filteredServiceCategories = serviceCategories.filter(category => {
+    if (selectedCategory !== 'all' && category.id !== selectedCategory) {
+      return false;
+    }
+    
+    if (searchTerm) {
+      return category.services.some(service =>
+        service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        service.homeShortDescription.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    return true;
+  });
 
   if (loading) {
     return (
@@ -392,7 +463,7 @@ function Services() {
             >
               جميع الخدمات
             </button>
-            {serviceCategories.map((category) => (
+            {categories.map((category) => (
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
@@ -411,7 +482,7 @@ function Services() {
 
       {/* Services Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {filteredServices.length === 0 ? (
+        {filteredServiceCategories.length === 0 ? (
           <div className="text-center py-12">
             <Package className="w-16 h-16 text-gray-600 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-white mb-2">لا توجد خدمات</h3>
@@ -421,72 +492,86 @@ function Services() {
           </div>
         ) : (
           <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-6'}>
-            {filteredServices.map((service) => (
-              <div
-                key={service.id}
-                className={`bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden transition-transform duration-200 hover:scale-[1.02] ${
-                  viewMode === 'list' ? 'flex' : ''
-                }`}
-              >
-                <div className={viewMode === 'list' ? 'w-1/3' : ''}>
-                  {service.mainImage ? (
-                    <img
-                      src={getImageSrc(service.mainImage)}
-                      alt={service.name}
-                      className={`w-full ${viewMode === 'list' ? 'h-full' : 'h-48'} object-cover`}
-                    />
-                  ) : (
-                    <div className={`w-full ${viewMode === 'list' ? 'h-full' : 'h-48'} bg-gray-700 flex items-center justify-center`}>
-                      <Package className="w-12 h-12 text-gray-500" />
-                    </div>
-                  )}
+            {filteredServiceCategories.map((category, categoryIndex) => (
+              <div key={category.id} className="space-y-6">
+                {/* Category Header */}
+                <div className="flex items-center gap-4 pb-4 border-b border-gray-700">
+                  <div className={`p-3 rounded-xl ${getColorClass(category.color)}`}>
+                    {category.icon}
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">{category.name}</h2>
+                    <p className="text-gray-400">{category.description}</p>
+                  </div>
                 </div>
-                
-                <div className={`p-6 ${viewMode === 'list' ? 'w-2/3' : ''}`}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="text-xl font-semibold text-white mb-2">
-                        {service.name}
-                      </h3>
-                      <p className="text-gray-400 text-sm mb-4">
-                        {service.homeShortDescription}
-                      </p>
-                    </div>
-                    {service.price && (
-                      <div className="text-right">
-                        <span className="text-sm text-gray-400">يبدأ من</span>
-                        <p className="text-lg font-semibold text-white">{service.price}</p>
-                      </div>
-                    )}
-                  </div>
 
-                  <div className="flex flex-wrap gap-4 mb-6">
-                    {service.duration && (
-                      <div className="flex items-center gap-2 text-sm text-gray-300">
-                        <Clock className="w-4 h-4 text-gray-400" />
-                        {service.duration}
-                      </div>
-                    )}
-                    {service.availability && (
-                      <div className="flex items-center gap-2 text-sm text-gray-300">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        {service.availability}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-400">
-                      {service.categoryName}
-                    </span>
-                    <Link
-                      to={`/services/${service.id}`}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors"
+                {/* Services Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {category.services.map((service, serviceIndex) => (
+                    <div
+                      key={service.id}
+                      className="bg-gray-800 rounded-2xl p-6 border border-gray-700 hover:border-gray-600 transition-all duration-300 hover:transform hover:-translate-y-1"
                     >
-                      التفاصيل
-                      <ArrowLeft className="w-4 h-4" />
-                    </Link>
-                  </div>
+                      {/* Service Image */}
+                      <div className="relative h-48 mb-4 rounded-lg overflow-hidden bg-gray-700">
+                        {service.mainImage ? (
+                          <img
+                            src={service.mainImage}
+                            alt={service.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="w-12 h-12 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Service Info */}
+                      <div className="space-y-3">
+                        <h3 className="text-xl font-bold text-white">{service.name}</h3>
+                        <p className="text-gray-300 text-sm">{service.homeShortDescription}</p>
+                        
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-1 text-gray-400">
+                            <Clock className="w-4 h-4" />
+                            <span>{service.duration}</span>
+                          </div>
+                          {service.price && (
+                            <span className="text-yellow-400 font-semibold">{service.price}</span>
+                          )}
+                        </div>
+
+                        {/* Service Features */}
+                        {service.features && service.features.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {service.features.slice(0, 2).map((feature, index) => (
+                              <span
+                                key={index}
+                                className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full"
+                              >
+                                {feature}
+                              </span>
+                            ))}
+                            {service.features.length > 2 && (
+                              <span className="px-2 py-1 bg-gray-600 text-gray-300 text-xs rounded-full">
+                                +{service.features.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Action Button */}
+                        <Link
+                          to={`/services/${service.id}`}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors w-full justify-center"
+                        >
+                          التفاصيل
+                          <ChevronRight className="w-4 h-4 transform rotate-180" />
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
