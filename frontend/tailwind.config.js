@@ -14,10 +14,10 @@ export default {
           dark: '#1A252F',
           light: '#3F5A7A',
         },
-        // Yellow/Orange Accent
-        'yellow': '#F39C12',
-        'orange': '#E67E22',
-        'gold': '#F1C40F',
+        // Brand accent colors (avoid overriding default yellow scale)
+        'brand-yellow': '#F39C12',
+        'brand-orange': '#E67E22',
+        'brand-gold': '#F1C40F',
         // Text Colors
         'text-light': '#ECF0F1',
         'text-gray': '#BDC3C7',
