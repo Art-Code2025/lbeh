@@ -58,6 +58,17 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     }
   }, [imagePreview]);
 
+  // مزامنة uploadedImageUrl مع formData.mainImage
+  useEffect(() => {
+    if (uploadedImageUrl && isCloudinaryUrl(uploadedImageUrl)) {
+      console.log('🔄 مزامنة uploadedImageUrl مع formData.mainImage:', uploadedImageUrl);
+      setFormData(prev => ({
+        ...prev,
+        mainImage: uploadedImageUrl
+      }));
+    }
+  }, [uploadedImageUrl]);
+
   // مراقبة تغييرات formData.mainImage
   useEffect(() => {
     if (formData.mainImage) {
@@ -71,6 +82,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     if (!isOpen) return; // لا تفعل شيئاً إذا كان Modal مغلق
     
     if (editingService) {
+      // تعديل خدمة موجودة
       setFormData({
         name: editingService.name || '',
         category: editingService.category || '',
@@ -88,10 +100,19 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       // تعيين معاينة الصورة إذا كانت موجودة
       if (editingService.mainImage) {
         setImagePreview(editingService.mainImage);
+        setUploadedImageUrl(editingService.mainImage); // حفظ URL الموجود
+      } else {
+        setImagePreview(null);
+        setUploadedImageUrl('');
       }
     } else {
-      // Reset form for new service - فقط إذا لم تكن هناك صورة مرفوعة حديثاً
-      if (!imagePreview || !isCloudinaryUrl(imagePreview)) {
+      // إضافة خدمة جديدة - فقط إذا لم تكن هناك صورة مرفوعة حديثاً
+      // التحقق من وجود صورة مرفوعة قبل إعادة التعيين
+      const hasUploadedImage = uploadedImageUrl && isCloudinaryUrl(uploadedImageUrl);
+      const hasPreviewImage = imagePreview && isCloudinaryUrl(imagePreview);
+      
+      if (!hasUploadedImage && !hasPreviewImage) {
+        // إعادة تعيين فقط إذا لم تكن هناك صورة مرفوعة
         setFormData({
           name: '',
           category: '',
@@ -106,10 +127,32 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           price: ''
         });
         setImagePreview(null);
-        setUploadedImageUrl(''); // إعادة تعيين URL المحفوظ
+        setUploadedImageUrl('');
+      } else {
+        // الاحتفاظ بالصورة المرفوعة وإعادة تعيين باقي البيانات فقط
+        setFormData(prev => ({
+          name: '',
+          category: '',
+          categoryName: '',
+          homeShortDescription: '',
+          detailsShortDescription: '',
+          description: '',
+          mainImage: hasUploadedImage ? uploadedImageUrl : (hasPreviewImage ? imagePreview : ''),
+          features: [],
+          duration: '',
+          availability: '',
+          price: ''
+        }));
+        
+        console.log('🔄 الاحتفاظ بالصورة المرفوعة في خدمة جديدة:', {
+          uploadedImageUrl,
+          imagePreview,
+          hasUploadedImage,
+          hasPreviewImage
+        });
       }
     }
-  }, [editingService]); // إزالة isOpen من dependencies
+  }, [editingService, isOpen]); // إضافة isOpen مرة أخرى مع حماية
 
   // useEffect منفصل لإعادة تعيين connectionTested عند فتح Modal
   useEffect(() => {
@@ -197,8 +240,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             format: 'auto'
           });
 
+          // حفظ الصورة في جميع المتغيرات للتأكد من عدم فقدانها
           setImagePreview(optimizedUrl);
-          setUploadedImageUrl(optimizedUrl); // حفظ URL بشكل منفصل
+          setUploadedImageUrl(optimizedUrl);
           
           // تحديث formData مباشرة للتأكد من الحفظ الصحيح
           setFormData(prev => ({
@@ -210,17 +254,22 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           console.log('📋 تم تحديث formData.mainImage:', optimizedUrl);
           console.log('🔒 تم حفظ URL في uploadedImageUrl:', optimizedUrl);
           
-          // تأخير قصير للتأكد من تحديث الحالة
+          // التحقق من حفظ الصورة بشكل صحيح
           setTimeout(() => {
-            console.log('🔄 التحقق النهائي - الصورة المرفوعة:', optimizedUrl);
+            console.log('🔄 التحقق النهائي من حالة الصورة:', {
+              imagePreview: optimizedUrl,
+              uploadedImageUrl: optimizedUrl,
+              formDataMainImage: optimizedUrl,
+              isValidCloudinaryUrl: isCloudinaryUrl(optimizedUrl)
+            });
             toast.success('🎉 تم رفع الصورة بنجاح!');
           }, 100);
 
         } else {
-          console.error('❌ فشل في رفع الصورة');
+          console.error('❌ فشل في رفع الصورة - لم يتم إرجاع URL');
           toast.error('❌ فشل في رفع الصورة');
           setImagePreview(null);
-          setUploadedImageUrl(''); // مسح URL عند الفشل
+          setUploadedImageUrl('');
         }
       } catch (error) {
         console.error('❌ خطأ في رفع الصورة:', error);
@@ -285,8 +334,29 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       return;
     }
     
-    // التأكد من أن الصور محفوظة في Cloudinary - استخدام uploadedImageUrl كمصدر أساسي
-    const finalMainImage = uploadedImageUrl || formData.mainImage || (imagePreview && isCloudinaryUrl(imagePreview) ? imagePreview : '');
+    // التأكد من أن الصور محفوظة في Cloudinary - استخدام أولوية متدرجة
+    let finalMainImage = '';
+    
+    // الأولوية الأولى: uploadedImageUrl (الأكثر موثوقية)
+    if (uploadedImageUrl && isCloudinaryUrl(uploadedImageUrl)) {
+      finalMainImage = uploadedImageUrl;
+      console.log('✅ استخدام uploadedImageUrl:', finalMainImage);
+    }
+    // الأولوية الثانية: formData.mainImage
+    else if (formData.mainImage && isCloudinaryUrl(formData.mainImage)) {
+      finalMainImage = formData.mainImage;
+      console.log('✅ استخدام formData.mainImage:', finalMainImage);
+    }
+    // الأولوية الثالثة: imagePreview
+    else if (imagePreview && isCloudinaryUrl(imagePreview)) {
+      finalMainImage = imagePreview;
+      console.log('✅ استخدام imagePreview:', finalMainImage);
+    }
+    // لا توجد صورة صالحة
+    else {
+      finalMainImage = '';
+      console.log('⚠️ لا توجد صورة Cloudinary صالحة');
+    }
     
     const serviceData = {
       ...formData,
@@ -306,13 +376,39 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     });
     
     console.log('💾 حفظ الخدمة مع صور Cloudinary:', {
+      name: serviceData.name,
       mainImage: serviceData.mainImage ? 'Cloudinary URL موجود' : 'لا توجد صورة رئيسية',
       isCloudinaryMainImage: serviceData.mainImage ? isCloudinaryUrl(serviceData.mainImage) : false,
       featuresCount: serviceData.features.length,
       actualURL: serviceData.mainImage
     });
     
+    // التحقق النهائي قبل الحفظ
+    if (serviceData.mainImage && !isCloudinaryUrl(serviceData.mainImage)) {
+      console.error('❌ خطأ: الصورة ليست من Cloudinary:', serviceData.mainImage);
+      toast.error('❌ خطأ في حفظ الصورة - يرجى المحاولة مرة أخرى');
+      return;
+    }
+    
     onSave(serviceData);
+    
+    // إعادة تعيين البيانات بعد الحفظ الناجح
+    setFormData({
+      name: '',
+      category: '',
+      categoryName: '',
+      homeShortDescription: '',
+      detailsShortDescription: '',
+      description: '',
+      mainImage: '',
+      features: [],
+      duration: '',
+      availability: '',
+      price: ''
+    });
+    setImagePreview(null);
+    setUploadedImageUrl('');
+    
     onClose();
     
     toast.success('🎉 تم حفظ الخدمة بنجاح!');
@@ -508,8 +604,11 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                   {/* حالة الصورة */}
                   {!uploading && (uploadedImageUrl || (formData.mainImage && isCloudinaryUrl(formData.mainImage))) && (
                     <div className="flex items-center gap-2 text-sm text-green-400">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                       <span>✅ الصورة جاهزة للحفظ</span>
+                      <span className="text-xs text-gray-400">
+                        ({uploadedImageUrl ? 'مرفوعة' : 'محفوظة'})
+                      </span>
                     </div>
                   )}
                   
@@ -517,6 +616,13 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                     <div className="flex items-center gap-2 text-sm text-yellow-400">
                       <Loader2 className="w-3 h-3 animate-spin" />
                       <span>⏳ جاري رفع الصورة...</span>
+                    </div>
+                  )}
+                  
+                  {!uploading && !uploadedImageUrl && !formData.mainImage && (
+                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                      <span>📷 لم يتم اختيار صورة</span>
                     </div>
                   )}
                 </div>
@@ -669,9 +775,21 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             <button
               type="submit"
               disabled={uploading}
-              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {uploading ? 'جاري الرفع...' : editingService ? 'تحديث الخدمة' : 'إضافة الخدمة'}
+              {uploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  جاري رفع الصورة...
+                </>
+              ) : (
+                <>
+                  {uploadedImageUrl && (
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  )}
+                  {editingService ? 'تحديث الخدمة' : 'إضافة الخدمة'}
+                </>
+              )}
             </button>
           </div>
         </form>
