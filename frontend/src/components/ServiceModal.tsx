@@ -66,6 +66,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   }, [formData.mainImage]);
 
   useEffect(() => {
+    // فقط عند فتح Modal جديد أو تغيير الخدمة المراد تعديلها
+    if (!isOpen) return; // لا تفعل شيئاً إذا كان Modal مغلق
+    
     if (editingService) {
       setFormData({
         name: editingService.name || '',
@@ -86,28 +89,35 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         setImagePreview(editingService.mainImage);
       }
     } else {
-      // Reset form for new service
-      setFormData({
-        name: '',
-        category: '',
-        categoryName: '',
-        homeShortDescription: '',
-        detailsShortDescription: '',
-        description: '',
-        mainImage: '',
-        features: [],
-        duration: '',
-        availability: '',
-        price: ''
-      });
-      setImagePreview(null);
+      // Reset form for new service - فقط إذا لم تكن هناك صورة مرفوعة حديثاً
+      if (!imagePreview || !isCloudinaryUrl(imagePreview)) {
+        setFormData({
+          name: '',
+          category: '',
+          categoryName: '',
+          homeShortDescription: '',
+          detailsShortDescription: '',
+          description: '',
+          mainImage: '',
+          features: [],
+          duration: '',
+          availability: '',
+          price: ''
+        });
+        setImagePreview(null);
+      }
     }
-  }, [editingService, isOpen]);
+  }, [editingService]); // إزالة isOpen من dependencies
 
-  // اختبار الاتصال عند فتح Modal
+  // useEffect منفصل لإعادة تعيين connectionTested عند فتح Modal
   useEffect(() => {
     if (isOpen && !connectionTested) {
       testConnection();
+    }
+    
+    // إعادة تعيين connectionTested عند إغلاق Modal
+    if (!isOpen) {
+      setConnectionTested(false);
     }
   }, [isOpen]);
 
@@ -198,7 +208,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           
           // تأخير قصير للتأكد من تحديث الحالة
           setTimeout(() => {
-            console.log('🔄 التحقق النهائي من formData.mainImage:', formData.mainImage);
+            console.log('🔄 التحقق النهائي - الصورة المرفوعة:', optimizedUrl);
             toast.success('🎉 تم رفع الصورة بنجاح!');
           }, 100);
 
@@ -269,15 +279,18 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       return;
     }
     
-    // التأكد من أن الصور محفوظة في Cloudinary
+    // التأكد من أن الصور محفوظة في Cloudinary - استخدام imagePreview كمصدر احتياطي
+    const finalMainImage = formData.mainImage || (imagePreview && isCloudinaryUrl(imagePreview) ? imagePreview : '');
+    
     const serviceData = {
       ...formData,
-      mainImage: formData.mainImage || '',
+      mainImage: finalMainImage,
     };
     
     console.log('🔍 تفاصيل البيانات قبل الحفظ:', {
       imagePreview: imagePreview,
       formDataMainImage: formData.mainImage,
+      finalMainImage: finalMainImage,
       serviceDataMainImage: serviceData.mainImage,
       isCloudinaryPreview: imagePreview ? isCloudinaryUrl(imagePreview) : false,
       isCloudinaryFormData: formData.mainImage ? isCloudinaryUrl(formData.mainImage) : false,
