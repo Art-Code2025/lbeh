@@ -25,17 +25,9 @@ const CATEGORY_SERVICES = {
   external_trips: {
     name: 'مشاوير خارجية',
     icon: '🗺️',
-    basePrice: 250,
     destinations: [
       { id: 'khamis_mushait', name: 'خميس مشيط', price: 250, duration: '9 ساعات كحد أقصى' },
       { id: 'abha', name: 'أبها', price: 300, duration: '9 ساعات كحد أقصى' }
-    ],
-    options: [
-      { id: 'hospital_booking', name: 'حجز مستشفى', icon: '🏥' },
-      { id: 'salon_booking', name: 'حجز مشغل', icon: '💇' },
-      { id: 'gardens', name: 'الحدائق', icon: '🌳' },
-      { id: 'public_facilities', name: 'المرافق العامة', icon: '🏛️' },
-      { id: 'airport', name: 'المطار', icon: '✈️' }
     ]
   },
   home_maintenance: {
@@ -106,7 +98,7 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
         setEstimatedPrice(`${destination.price} ريال`);
       }
     } else if (selectedCategory === 'home_maintenance') {
-      setEstimatedPrice('سعر متغير - حسب نوع الصيانة');
+      setEstimatedPrice(''); // لا يظهر سعر للصيانة المنزلية
     } else {
       setEstimatedPrice('');
     }
@@ -406,11 +398,11 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
                     </div>
                   </div>
 
-                  {/* نقاط الانطلاق والوصول */}
+                  {/* موقع الانطلاق ونقطة الوصول */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">
-                        نقطة الانطلاق *
+                        موقع الانطلاق *
                       </label>
                       <input
                         type="text"
@@ -433,30 +425,6 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
                         placeholder="مثال: خميس مشيط - المستشفى العام"
                         required
                       />
-                    </div>
-                  </div>
-
-                  {/* خيارات الوجهة */}
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      اختر نوع الوجهة (اختياري)
-                    </label>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                      {CATEGORY_SERVICES.external_trips.options.map(option => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => handleOptionToggle(option.id)}
-                          className={`p-2 rounded-lg border transition-all duration-200 text-center ${
-                            formData.selectedOptions.includes(option.id)
-                              ? 'border-green-500 bg-green-500/20 text-green-300'
-                              : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
-                          }`}
-                        >
-                          <div className="text-sm mb-1">{option.icon}</div>
-                          <div className="text-xs font-medium">{option.name}</div>
-                        </button>
-                      ))}
                     </div>
                   </div>
                 </div>
@@ -508,33 +476,35 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
                 </div>
               )}
 
-              {/* السعر المتوقع */}
-              {estimatedPrice && (
-                <div className={`rounded-xl p-4 border ${
-                  selectedCategory === 'home_maintenance' 
-                    ? 'bg-orange-500/20 border-orange-500/30' 
-                    : 'bg-green-500/20 border-green-500/30'
-                }`}>
+              {/* السعر المتوقع - فقط للتوصيل الداخلي والمشاوير الخارجية */}
+              {estimatedPrice && selectedCategory !== 'home_maintenance' && (
+                <div className="bg-green-500/20 border-green-500/30 rounded-xl p-4 border">
                   <div className="flex items-center gap-3">
-                    <DollarSign className={`w-6 h-6 ${
-                      selectedCategory === 'home_maintenance' ? 'text-orange-400' : 'text-green-400'
-                    }`} />
+                    <DollarSign className="w-6 h-6 text-green-400" />
                     <div>
-                      <h4 className={`font-semibold ${
-                        selectedCategory === 'home_maintenance' ? 'text-orange-300' : 'text-green-300'
-                      }`}>
-                        السعر المتوقع
-                      </h4>
-                      <p className={`text-lg font-bold ${
-                        selectedCategory === 'home_maintenance' ? 'text-orange-200' : 'text-green-200'
-                      }`}>
-                        {estimatedPrice}
-                      </p>
-                      {selectedCategory === 'home_maintenance' && (
-                        <p className="text-orange-200 text-sm mt-1">
-                          سيتم تحديد السعر النهائي بعد معاينة العمل المطلوب
+                      <h4 className="font-semibold text-green-300">السعر</h4>
+                      <p className="text-lg font-bold text-green-200">{estimatedPrice}</p>
+                      {selectedCategory === 'external_trips' && (
+                        <p className="text-green-200 text-sm mt-1">
+                          مدة الرحلة: 9 ساعات كحد أقصى
                         </p>
                       )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* رسالة للصيانة المنزلية */}
+              {selectedCategory === 'home_maintenance' && (
+                <div className="bg-orange-500/20 border-orange-500/30 rounded-xl p-4 border">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="w-6 h-6 text-orange-400" />
+                    <div>
+                      <h4 className="font-semibold text-orange-300">تحديد السعر</h4>
+                      <p className="text-orange-200">السعر على حسب المطلوب</p>
+                      <p className="text-orange-200 text-sm mt-1">
+                        سيتم تحديد السعر النهائي بعد معاينة العمل المطلوب
+                      </p>
                     </div>
                   </div>
                 </div>

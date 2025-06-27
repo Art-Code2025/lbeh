@@ -226,9 +226,9 @@ const About: React.FC = () => {
               <p className="text-gray-300 leading-relaxed">
                 العميل هو محور اهتمامنا، نسعى دائماً لتقديم أفضل تجربة من خلال المنصات الإلكترونية.
               </p>
-            </div>
           </div>
-        </section>
+        </div>
+      </section>
 
         {/* Future Vision Section */}
         <section className="mb-20">
@@ -260,20 +260,20 @@ const About: React.FC = () => {
                     <span className="text-gray-300">ضمان الأمان والسرعة</span>
                   </div>
                 </div>
-              </div>
-              
+        </div>
+
               <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl p-8 border border-blue-500/20">
                 <div className="text-center">
                   <Users className="w-16 h-16 text-blue-400 mx-auto mb-6" />
                   <h4 className="text-xl font-bold text-white mb-4">فريق عمل محترف</h4>
                   <p className="text-gray-300 leading-relaxed">
                     نحرص على اختيار أفضل الكوادر وتدريبهم باستمرار لضمان تقديم خدمة متميزة تليق بعملائنا الكرام.
-                  </p>
+              </p>
                 </div>
-              </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
         {/* Timeline Section */}
         <section className="mb-20">
@@ -385,9 +385,9 @@ const About: React.FC = () => {
                 تواصل معنا
                 <ArrowRight className="w-5 h-5" />
               </Link>
-            </div>
           </div>
-        </section>
+        </div>
+      </section>
       </div>
     </div>
   );

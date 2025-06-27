@@ -65,11 +65,11 @@ export default function ServiceDetail() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const fetchService = async () => {
+  const fetchService = async () => {
       if (!id) return;
       
-      try {
-        setLoading(true);
+    try {
+      setLoading(true);
         
         // جلب الخدمة من Firebase مباشرة
         const { initializeApp } = await import('firebase/app');
@@ -120,10 +120,10 @@ export default function ServiceDetail() {
       } catch (error) {
         console.error('Error fetching service:', error);
         setError('فشل في تحميل الخدمة');
-      } finally {
-        setLoading(false);
-      }
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
 
     fetchService();
   }, [id]);
@@ -336,7 +336,7 @@ export default function ServiceDetail() {
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
           <div className="absolute -top-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-indigo-300/20 rounded-full blur-3xl"></div>
-        </div>
+            </div>
 
         <div className="relative max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
           {/* Navigation */}
@@ -389,9 +389,9 @@ export default function ServiceDetail() {
                   <div>
                     <p className="text-sm text-blue-100">السعر</p>
                     <p className="font-semibold">{service.price}</p>
-                  </div>
-                </div>
-                
+        </div>
+      </div>
+
                 <div className="flex items-center gap-3 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
                   <div className="p-2 bg-white/20 rounded-lg">
                     <MapPin className="w-5 h-5" />
@@ -424,7 +424,7 @@ export default function ServiceDetail() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
               </div>
-              
+
               {/* Floating Badge */}
               <div className="absolute -bottom-6 -left-6 p-4 bg-white rounded-2xl shadow-xl border border-gray-100">
                 <div className="flex items-center gap-3">
@@ -448,12 +448,12 @@ export default function ServiceDetail() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-800 mb-4">مميزات الخدمة</h2>
             <p className="text-xl text-gray-600">نقدم لك أفضل خدمة بأعلى معايير الجودة</p>
-          </div>
+            </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {service.features.map((feature, index) => (
-              <div
-                key={index}
+                  {service.features.map((feature, index) => (
+                    <div
+                      key={index}
                 className="group p-6 bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-2xl border border-blue-100 hover:border-blue-200 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-xl"
               >
                 <div className="flex items-start gap-4">
@@ -463,7 +463,7 @@ export default function ServiceDetail() {
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800 mb-2">{feature}</h3>
                     <p className="text-gray-600">ميزة متقدمة تضمن لك أفضل تجربة خدمة</p>
-                  </div>
+                    </div>
                 </div>
               </div>
             ))}
@@ -581,7 +581,7 @@ export default function ServiceDetail() {
                           <option key={index} value={option}>{option}</option>
                         ))}
                       </select>
-                    </div>
+          </div>
 
                     {/* خيارات خاصة بالتوصيل الداخلي */}
                     {service.category === 'internal_delivery' && (
@@ -602,8 +602,8 @@ export default function ServiceDetail() {
                         <p className="text-sm text-gray-500 mt-2 mr-8">
                           سيتم التوصيل خلال 30 دقيقة كحد أقصى
                         </p>
-                      </div>
-                    )}
+                  </div>
+                )}
 
                     {/* خيارات خاصة بالمشاوير الخارجية */}
                     {service.category === 'external_trips' && (
@@ -696,8 +696,8 @@ export default function ServiceDetail() {
                             سيتم انتظارك في الوجهة والعودة معك
                           </p>
                         </div>
-                      </div>
-                    )}
+                  </div>
+                )}
 
                     {/* خيارات خاصة بالصيانة المنزلية */}
                     {service.category === 'home_maintenance' && (
@@ -735,9 +735,9 @@ export default function ServiceDetail() {
                             </select>
                           </div>
                         </div>
-                      </div>
-                    )}
                   </div>
+                )}
+              </div>
                 </div>
               )}
 
@@ -746,7 +746,7 @@ export default function ServiceDetail() {
                 <h3 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-3">
                   <div className="p-2 bg-green-600 rounded-lg">
                     <MessageSquare className="w-5 h-5 text-white" />
-                  </div>
+                </div>
                   تفاصيل إضافية
                 </h3>
                 
@@ -762,8 +762,8 @@ export default function ServiceDetail() {
                     className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-400 resize-none shadow-sm"
                     placeholder="أي تفاصيل إضافية تود إضافتها..."
                   />
-                </div>
-              </div>
+        </div>
+      </div>
 
               {/* أزرار التحكم */}
               <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">

@@ -60,7 +60,7 @@ const Home: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
-
+        
   // Fetch categories from Firebase/API
   const fetchCategories = async (): Promise<Category[]> => {
     try {
@@ -451,11 +451,11 @@ const Home: React.FC = () => {
             <p className="text-xl text-slate-600">أشهر الخدمات المطلوبة من عملائنا الكرام</p>
           </div>
 
-          {loading ? (
+            {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
               <p className="text-slate-600 text-lg">جاري تحميل الخدمات...</p>
-            </div>
+              </div>
           ) : error ? (
             <div className="text-center py-12">
               <p className="text-red-600 text-lg mb-4">⚠️ {error}</p>
@@ -469,7 +469,7 @@ const Home: React.FC = () => {
           ) : getPopularServices().length === 0 ? (
             <div className="text-center py-12">
               <p className="text-slate-500 text-lg mb-4">لا توجد خدمات متاحة حالياً</p>
-              <Link 
+                <Link
                 to="/dashboard"
                 className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors inline-block"
               >
@@ -482,9 +482,9 @@ const Home: React.FC = () => {
                 <div key={service.id} className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 group border border-cyan-100/50 hover:-translate-y-1">
                   <div className="relative h-48 mb-6 rounded-xl overflow-hidden bg-gray-100">
                     {service.mainImage ? (
-                      <img
-                        src={service.mainImage}
-                        alt={service.name}
+                        <img
+                          src={service.mainImage}
+                          alt={service.name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
                     ) : (
@@ -497,12 +497,12 @@ const Home: React.FC = () => {
                         </div>
                       </div>
                     )}
-                  </div>
+                        </div>
                   
                   <h3 className="text-xl font-bold text-slate-800 mb-3">{service.name}</h3>
                   <p className="text-slate-600 mb-4 line-clamp-2">{service.homeShortDescription}</p>
                   
-                  <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center justify-between mb-4">
                     <span className="text-sm font-medium text-cyan-700 bg-cyan-100 px-3 py-1 rounded-full">
                       {service.categoryName}
                     </span>
@@ -510,8 +510,8 @@ const Home: React.FC = () => {
                       <span className="text-amber-600 font-bold">
                         {service.price}
                       </span>
-                    )}
-                  </div>
+                        )}
+                      </div>
                   
                   <div className="flex gap-3">
                     <Link
@@ -526,22 +526,22 @@ const Home: React.FC = () => {
                     >
                       احجز الآن
                     </Link>
-                  </div>
-                </div>
+                    </div>
+                    </div>
               ))}
-            </div>
-          )}
+              </div>
+            )}
 
           {!loading && !error && getPopularServices().length > 0 && (
             <div className="text-center mt-12">
-              <Link
+            <Link
                 to="/services"
                 className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all duration-200 shadow-lg"
-              >
+            >
                 عرض جميع الخدمات
                 <ArrowUpRight className="w-5 h-5" />
-              </Link>
-            </div>
+            </Link>
+          </div>
           )}
         </div>
       </section>

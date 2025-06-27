@@ -25,19 +25,19 @@ const CategoryModal: React.FC<CategoryModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (editingCategory) {
-        setFormData({
+      setFormData({
           name: editingCategory.name || '',
           description: editingCategory.description || '',
           icon: editingCategory.icon || '',
           color: editingCategory.color || '#3B82F6'
-        });
-      } else {
-        setFormData({
-          name: '',
-          description: '',
+      });
+    } else {
+      setFormData({
+        name: '',
+        description: '',
           icon: '',
           color: '#3B82F6'
-        });
+      });
       }
     }
   }, [isOpen, editingCategory]);
@@ -55,7 +55,7 @@ const CategoryModal: React.FC<CategoryModalProps> = ({
     }
 
     onSave(formData);
-    onClose();
+      onClose();
   };
 
   if (!isOpen) return null;
@@ -66,7 +66,7 @@ const CategoryModal: React.FC<CategoryModalProps> = ({
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-white">
             {editingCategory ? 'تعديل فئة' : 'إضافة فئة جديدة'}
-          </h2>
+              </h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white p-2 hover:bg-gray-700 rounded-lg transition-colors"

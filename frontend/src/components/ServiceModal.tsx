@@ -82,10 +82,27 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    
+    // Set automatic price based on category
+    let autoPrice = '';
+    if (name === 'category') {
+      const selectedCategory = categories.find(c => c.id === value);
+      if (selectedCategory) {
+        if (value === 'internal_delivery') {
+          autoPrice = '20 ريال';
+        } else if (value === 'external_trips') {
+          autoPrice = 'خميس مشيط: 250 ريال | أبها: 300 ريال';
+        } else if (value === 'home_maintenance') {
+          autoPrice = 'على حسب المطلوب';
+        }
+      }
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: value,
-      categoryName: name === 'category' ? categories.find(c => c.id === value)?.name || '' : prev.categoryName
+      categoryName: name === 'category' ? categories.find(c => c.id === value)?.name || '' : prev.categoryName,
+      price: name === 'category' ? autoPrice : prev.price
     }));
   };
 
@@ -157,11 +174,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
 
   if (!isOpen) return null;
 
-  const selectedCategory = categories.find(cat => cat.id === formData.category);
-
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="bg-gray-800 rounded-2xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-700">
+      <div className="bg-gray-800 rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-700">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
             <Package className="w-6 h-6 text-blue-400" />
@@ -176,47 +191,46 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* الحقول الأساسية */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                اسم الخدمة *
-              </label>
-              <input
-                id="name"
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
-                placeholder="أدخل اسم الخدمة"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                الفئة *
-              </label>
-              <select
-                id="category"
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
-                required
-              >
-                <option value="">اختر الفئة</option>
-                {categories.map(category => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {/* اختيار الفئة */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              الفئة *
+            </label>
+            <select
+              id="category"
+              name="category"
+              value={formData.category}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+              required
+            >
+              <option value="">اختر الفئة</option>
+              {categories.map(category => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* Description */}
+          {/* اسم الخدمة */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              اسم الخدمة *
+            </label>
+            <input
+              id="name"
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
+              placeholder="أدخل اسم الخدمة"
+              required
+            />
+          </div>
+
+          {/* وصف مختصر */}
           <div>
             <label htmlFor="homeShortDescription" className="block text-sm font-medium text-gray-300 mb-2">
               وصف مختصر *
@@ -233,6 +247,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             />
           </div>
 
+          {/* وصف تفصيلي */}
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-2">
               وصف تفصيلي
@@ -248,7 +263,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             />
           </div>
 
-          {/* السعر */}
+          {/* السعر - يتم تعيينه تلقائياً */}
           <div>
             <label htmlFor="price" className="block text-sm font-medium text-gray-300 mb-2">
               السعر
@@ -262,15 +277,16 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 value={formData.price}
                 onChange={handleInputChange}
                 className="w-full pl-4 pr-10 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
-                placeholder="مثال: 20 ريال أو حسب الطلب"
+                placeholder="سيتم تعيين السعر تلقائياً حسب الفئة"
+                readOnly
               />
             </div>
             <p className="text-gray-400 text-xs mt-1">
-              يمكن ترك هذا الحقل فارغاً إذا كان السعر متغير حسب الطلب
+              يتم تحديد السعر تلقائياً حسب فئة الخدمة المختارة
             </p>
           </div>
 
-          {/* Image Upload */}
+          {/* رفع الصورة */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
               الصورة الرئيسية
@@ -333,7 +349,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             </div>
           </div>
 
-          {/* Features */}
+          {/* المميزات */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
               المميزات
@@ -371,7 +387,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             </ul>
           </div>
 
-          {/* Actions */}
+          {/* أزرار التحكم */}
           <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-700">
             <button
               type="button"

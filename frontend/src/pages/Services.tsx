@@ -140,7 +140,7 @@ function Services() {
       setError('فشل في تحميل البيانات');
     } finally {
       setLoading(false);
-    }
+        }
   };
 
   const fetchCategories = async () => {
@@ -293,8 +293,8 @@ function Services() {
           name: service.categoryName,
           description: `خدمات ${service.categoryName}`,
           icon: <Package className="w-6 h-6" />,
-          color: 'blue',
-          services: []
+        color: 'blue',
+        services: []
         };
 
         // تحديد الأيقونة والوصف بناء على نوع الفئة
@@ -390,7 +390,7 @@ function Services() {
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-3">عذراً!</h2>
           <p className="text-gray-600 mb-6">{error}</p>
-          <button
+          <button 
             onClick={fetchData}
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
           >
@@ -411,8 +411,8 @@ function Services() {
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
           <div className="absolute -top-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-indigo-300/20 rounded-full blur-3xl"></div>
-        </div>
-
+            </div>
+            
         <div className="relative max-w-7xl mx-auto px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center text-white">
             <h1 className="text-4xl lg:text-6xl font-bold mb-6 leading-tight">
@@ -525,15 +525,15 @@ function Services() {
           <>
             {/* Results Header */}
             <div className="flex items-center justify-between mb-8">
-              <div>
+                    <div>
                 <h2 className="text-2xl font-bold text-gray-800">
                   {selectedCategory === 'all' ? 'جميع الخدمات' : categories.find(c => c.id === selectedCategory)?.name}
                 </h2>
                 <p className="text-gray-600 mt-1">
                   {filteredServices.length} خدمة متاحة
                 </p>
-              </div>
-              
+                  </div>
+
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <Clock className="w-4 h-4" />
                 <span>متاح 24/7</span>
@@ -552,13 +552,13 @@ function Services() {
                   service={service} 
                   viewMode={viewMode}
                 />
-              ))}
-            </div>
+            ))}
+          </div>
           </>
         )}
       </div>
 
-      <ToastContainer 
+      <ToastContainer
         position="top-right" 
         autoClose={3000} 
         hideProgressBar={false}

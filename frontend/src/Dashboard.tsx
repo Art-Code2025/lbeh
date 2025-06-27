@@ -245,7 +245,7 @@ function Dashboard() {
 
   const handleTestCloudinary = async () => {
     try {
-      setLoading(true);
+    setLoading(true);
       toast.info('🔍 جاري اختبار Cloudinary...');
       
       const isConnected = await testCloudinaryConnection();
@@ -350,7 +350,7 @@ function Dashboard() {
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
-                    <Zap className="w-6 h-6 text-white" />
+                  <Zap className="w-6 h-6 text-white" />
                   </div>
                   <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-gray-800 animate-pulse"></div>
                 </div>
@@ -414,7 +414,7 @@ function Dashboard() {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className="w-5 h-5" />
+                <Icon className="w-5 h-5" />
                   <span>{label}</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -437,14 +437,14 @@ function Dashboard() {
 
           {/* Enhanced Footer */}
           <div className="p-4 border-t border-gray-700/50 space-y-2">
-            <button
+              <button
               onClick={handleTestCloudinary}
               className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-xl font-medium transition-colors group"
             >
               <Zap className="w-5 h-5 group-hover:text-yellow-400 transition-colors" />
               <span>اختبار Cloudinary</span>
-            </button>
-            <button
+              </button>
+              <button
               onClick={loadData}
               className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-xl font-medium transition-colors group"
             >
@@ -452,7 +452,7 @@ function Dashboard() {
               <span>تحديث البيانات</span>
             </button>
           </div>
-        </div>
+          </div>
       </div>
 
       {/* Enhanced Main Content */}
@@ -460,12 +460,12 @@ function Dashboard() {
         {/* Enhanced Top Bar */}
         <div className="bg-gray-800/50 backdrop-blur-xl border-b border-gray-700/50 px-6 py-4 shadow-lg">
           <div className="flex items-center justify-between">
-            <button
+              <button
               onClick={() => setIsSidebarOpen(true)}
               className="lg:hidden p-2 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors"
-            >
+              >
               <Menu className="w-6 h-6" />
-            </button>
+              </button>
             <div className="flex items-center gap-4">
               <h2 className="text-xl font-bold text-white">
                 {activeTab === 'overview' && '📊 نظرة عامة'}
@@ -477,7 +477,7 @@ function Dashboard() {
                 <div className="flex items-center gap-2 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm border border-green-500/30">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                   <span>مباشر</span>
-                </div>
+              </div>
               )}
             </div>
             <div className="flex items-center gap-3">
@@ -503,9 +503,9 @@ function Dashboard() {
                     </div>
                     <div className="p-3 bg-blue-500/30 rounded-xl">
                       <Package className="w-8 h-8 text-blue-300" />
-                    </div>
                   </div>
                 </div>
+                    </div>
                 
                 <div className="bg-gradient-to-br from-green-500/20 to-green-600/20 backdrop-blur-lg rounded-2xl p-6 border border-green-500/30 hover:border-green-400/50 transition-all duration-300 transform hover:scale-105 shadow-xl">
                   <div className="flex items-center justify-between">
@@ -516,8 +516,8 @@ function Dashboard() {
                     </div>
                     <div className="p-3 bg-green-500/30 rounded-xl">
                       <Tag className="w-8 h-8 text-green-300" />
-                    </div>
                   </div>
+                </div>
                 </div>
                 
                 <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-500/30 hover:border-purple-400/50 transition-all duration-300 transform hover:scale-105 shadow-xl">
@@ -534,10 +534,10 @@ function Dashboard() {
                           <span className="text-xs text-white font-bold">{newBookingsCount}</span>
                         </div>
                       )}
-                    </div>
                   </div>
                 </div>
-                
+              </div>
+
                 <div className="bg-gradient-to-br from-orange-500/20 to-orange-600/20 backdrop-blur-lg rounded-2xl p-6 border border-orange-500/30 hover:border-orange-400/50 transition-all duration-300 transform hover:scale-105 shadow-xl">
                   <div className="flex items-center justify-between">
                     <div>
@@ -546,36 +546,36 @@ function Dashboard() {
                         {bookings.filter(b => b.status === 'pending').length}
                       </p>
                       <p className="text-orange-400 text-xs mt-1">يحتاج مراجعة</p>
-                    </div>
+                      </div>
                     <div className="p-3 bg-orange-500/30 rounded-xl">
                       <Users className="w-8 h-8 text-orange-300" />
                     </div>
-                  </div>
+                      </div>
+                    </div>
                 </div>
-              </div>
 
               {/* Recent Activity */}
               <div className="bg-gray-800/50 backdrop-blur-lg rounded-2xl p-6 border border-gray-700/50 shadow-xl">
                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                   <Clock className="w-5 h-5 text-blue-400" />
-                  النشاط الأخير
+                    النشاط الأخير
                 </h3>
                 <div className="space-y-3">
                   {bookings.slice(0, 5).map((booking, index) => (
                     <div key={booking.id} className="flex items-center gap-4 p-3 bg-gray-700/30 rounded-xl hover:bg-gray-700/50 transition-colors">
                       <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                      <div className="flex-1">
+                        <div className="flex-1">
                         <p className="text-white text-sm font-medium">حجز جديد: {booking.serviceName}</p>
                         <p className="text-gray-400 text-xs">العميل: {booking.fullName}</p>
-                      </div>
+                        </div>
                       <div className="text-xs text-gray-400">
                         {formatTimeAgo(new Date(booking.createdAt || ''))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
           )}
 
           {activeTab === 'categories' && (
@@ -598,28 +598,28 @@ function Dashboard() {
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center text-xl">
                           {category.icon || '📦'}
-                        </div>
+                      </div>
                         <div>
                           <h4 className="font-bold text-white text-lg">{category.name}</h4>
                           <p className="text-gray-400 text-sm">
                             {services.filter(s => s.category === category.id).length} خدمة
                           </p>
-                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => handleCategoryEdit(category)}
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleCategoryEdit(category)}
                           className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 rounded-lg transition-colors"
-                        >
+                      >
                           <Edit className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleCategoryDelete(category.id)}
+                      </button>
+                      <button 
+                        onClick={() => handleCategoryDelete(category.id)}
                           className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                     </div>
                     <p className="text-gray-300 text-sm leading-relaxed">{category.description}</p>
                   </div>
@@ -691,18 +691,18 @@ function Dashboard() {
                 <div className="flex items-center gap-4">
                   <h3 className="text-2xl font-bold text-white">الحجوزات</h3>
                   <div className="flex items-center gap-2 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm border border-green-500/30">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                     <span>تحديث مباشر</span>
+                      </div>
                   </div>
-                </div>
-                <button
+                  <button
                   onClick={loadData}
                   className="flex items-center gap-2 px-4 py-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 hover:text-white rounded-lg transition-colors"
-                >
+                  >
                   <RefreshCw className="w-4 h-4" />
                   تحديث
-                </button>
-              </div>
+                  </button>
+                </div>
 
               <div className="bg-gray-800/50 backdrop-blur-lg rounded-2xl border border-gray-700/50 overflow-hidden shadow-xl">
                 <div className="p-6">
@@ -712,41 +712,41 @@ function Dashboard() {
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
                         <span className="text-gray-400">معلق ({bookings.filter(b => b.status === 'pending').length})</span>
-                      </div>
+                    </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
                         <span className="text-gray-400">مؤكد ({bookings.filter(b => b.status === 'confirmed').length})</span>
-                      </div>
+                  </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-green-400 rounded-full"></div>
                         <span className="text-gray-400">مكتمل ({bookings.filter(b => b.status === 'completed').length})</span>
-                      </div>
-                    </div>
                   </div>
-                  
+                </div>
+              </div>
+
                   {bookings.length === 0 ? (
                     <div className="text-center py-12">
                       <Calendar className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                       <p className="text-gray-400 text-lg">لا توجد حجوزات حالياً</p>
                       <p className="text-gray-500 text-sm mt-2">ستظهر الحجوزات الجديدة هنا تلقائياً</p>
-                    </div>
-                  ) : (
+                  </div>
+                ) : (
                     <div className="space-y-4">
                       {bookings.map((booking) => (
                         <div key={booking.id} className="bg-gray-700/30 rounded-xl p-4 border border-gray-600/30 hover:border-gray-500/50 transition-all duration-300">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
                                 <h4 className="font-bold text-white text-lg">{booking.serviceName}</h4>
                                 <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.status)}`}>
-                                  {getStatusIcon(booking.status)}
+                                {getStatusIcon(booking.status)}
                                   {booking.status === 'pending' && 'معلق'}
                                   {booking.status === 'confirmed' && 'مؤكد'}
                                   {booking.status === 'completed' && 'مكتمل'}
                                   {booking.status === 'cancelled' && 'ملغي'}
-                                </span>
-                              </div>
-                              
+                              </span>
+                            </div>
+                            
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div className="flex items-center gap-2 text-gray-300">
                                   <User className="w-4 h-4 text-blue-400" />
@@ -759,57 +759,57 @@ function Dashboard() {
                                 <div className="flex items-center gap-2 text-gray-300">
                                   <MapPin className="w-4 h-4 text-red-400" />
                                   <span className="text-sm">{booking.address}</span>
-                                </div>
+                              </div>
                                 <div className="flex items-center gap-2 text-gray-300">
                                   <Clock className="w-4 h-4 text-purple-400" />
                                   <span className="text-sm">{formatTimeAgo(new Date(booking.createdAt || ''))}</span>
                                 </div>
-                              </div>
+                                </div>
                               
-                              {booking.serviceDetails && (
+                                {booking.serviceDetails && (
                                 <div className="bg-gray-600/30 rounded-lg p-3 mb-4">
                                   <p className="text-gray-300 text-sm"><strong>تفاصيل الخدمة:</strong> {booking.serviceDetails}</p>
-                                </div>
-                              )}
-                            </div>
-                            
+                                  </div>
+                                )}
+                          </div>
+                          
                             <div className="flex flex-col gap-2 ml-4">
-                              {booking.status === 'pending' && (
-                                <>
-                                  <button
-                                    onClick={() => handleBookingStatusUpdate(booking.id, 'confirmed')}
-                                    className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
-                                  >
-                                    تأكيد
-                                  </button>
-                                  <button
-                                    onClick={() => handleBookingStatusUpdate(booking.id, 'cancelled')}
-                                    className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm transition-colors"
-                                  >
-                                    إلغاء
-                                  </button>
-                                </>
-                              )}
-                              {booking.status === 'confirmed' && (
+                            {booking.status === 'pending' && (
+                              <>
                                 <button
-                                  onClick={() => handleBookingStatusUpdate(booking.id, 'completed')}
-                                  className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm transition-colors"
+                                  onClick={() => handleBookingStatusUpdate(booking.id, 'confirmed')}
+                                    className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
                                 >
-                                  إكمال
+                                  تأكيد
                                 </button>
-                              )}
-                            </div>
+                                <button
+                                  onClick={() => handleBookingStatusUpdate(booking.id, 'cancelled')}
+                                    className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm transition-colors"
+                                >
+                                  إلغاء
+                                </button>
+                              </>
+                            )}
+                            {booking.status === 'confirmed' && (
+                              <button
+                                onClick={() => handleBookingStatusUpdate(booking.id, 'completed')}
+                                  className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm transition-colors"
+                              >
+                                إكمال
+                              </button>
+                            )}
                           </div>
                         </div>
-                      ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
                     </div>
-                  )}
-                </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
-        </div>
-      </div>
+              </div>
 
       {/* Modals */}
       <ServiceModal
@@ -857,4 +857,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard; 
+export default Dashboard;
