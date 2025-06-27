@@ -11,8 +11,7 @@ import {
 interface Provider {
   id: string;
   name: string;
-  category: string;
-  phone: string;
+  category: 'internal_delivery' | 'external_trips' | 'home_maintenance';
   whatsapp: string;
   services: string[];
   rating: number;
@@ -33,8 +32,7 @@ const ProvidersManagement: React.FC<ProvidersManagementProps> = ({ isOpen, onClo
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    category: 'internal_delivery',
-    phone: '',
+    category: 'internal_delivery' as 'internal_delivery' | 'external_trips' | 'home_maintenance',
     whatsapp: '',
     services: [''],
     rating: 5,
@@ -105,7 +103,6 @@ const ProvidersManagement: React.FC<ProvidersManagementProps> = ({ isOpen, onClo
     setFormData({
       name: provider.name,
       category: provider.category,
-      phone: provider.phone,
       whatsapp: provider.whatsapp,
       services: provider.services,
       rating: provider.rating,
@@ -119,8 +116,7 @@ const ProvidersManagement: React.FC<ProvidersManagementProps> = ({ isOpen, onClo
   const resetForm = () => {
     setFormData({
       name: '',
-      category: 'internal_delivery',
-      phone: '',
+      category: 'internal_delivery' as 'internal_delivery' | 'external_trips' | 'home_maintenance',
       whatsapp: '',
       services: [''],
       rating: 5,
@@ -227,7 +223,7 @@ const ProvidersManagement: React.FC<ProvidersManagementProps> = ({ isOpen, onClo
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm text-gray-300">
                       <Phone className="w-4 h-4" />
-                      <span>{provider.phone}</span>
+                      <span>{provider.whatsapp}</span>
                     </div>
                     
                     <div className="flex items-center gap-2 text-sm text-gray-300">
@@ -287,24 +283,13 @@ const ProvidersManagement: React.FC<ProvidersManagementProps> = ({ isOpen, onClo
                     <label className="block text-sm font-medium text-gray-300 mb-2">الفئة</label>
                     <select
                       value={formData.category}
-                      onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                      onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value as 'internal_delivery' | 'external_trips' | 'home_maintenance' }))}
                       className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
                     >
                       <option value="internal_delivery">التوصيل الداخلي</option>
                       <option value="external_trips">الرحلات الخارجية</option>
                       <option value="home_maintenance">الصيانة المنزلية</option>
                     </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">رقم الهاتف</label>
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                      required
-                    />
                   </div>
 
                   <div>

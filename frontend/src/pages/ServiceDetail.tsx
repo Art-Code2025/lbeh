@@ -50,26 +50,26 @@ export default function ServiceDetail() {
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         
-        // البحث عن الفئة
-        const categoriesRef = collection(db, 'categories');
-        const snapshot = await getDocs(categoriesRef);
+        // البحث عن الخدمة في مجموعة services
+        const servicesRef = collection(db, 'services');
+        const servicesSnapshot = await getDocs(servicesRef);
         
         let foundService = null;
-        snapshot.forEach((doc) => {
+        servicesSnapshot.forEach((doc) => {
           if (doc.id === id) {
-            const category = doc.data();
+            const serviceData = doc.data();
             foundService = {
-              id: doc.id,
-              name: category.name,
-              category: doc.id,
-              categoryName: category.name,
-              description: getDetailedDescription(doc.id),
-              mainImage: getDefaultImage(doc.id),
-              detailedImages: [getDefaultImage(doc.id)],
-              features: getDefaultFeatures(doc.id),
-              duration: getDefaultDuration(doc.id),
-              availability: "متاح 24/7",
-              price: getDefaultPrice(doc.id)
+              id: parseInt(doc.id) || Math.floor(Math.random() * 10000),
+              name: serviceData.name || '',
+              category: serviceData.categoryId || serviceData.category || '',
+              categoryName: serviceData.categoryName || '',
+              description: serviceData.description || serviceData.homeShortDescription || '',
+              mainImage: serviceData.mainImage || getDefaultImage(serviceData.categoryId || serviceData.category || ''),
+              detailedImages: serviceData.detailedImages || [serviceData.mainImage || getDefaultImage(serviceData.categoryId || serviceData.category || '')],
+              features: serviceData.features || getDefaultFeatures(serviceData.categoryId || serviceData.category || ''),
+              duration: serviceData.duration || getDefaultDuration(serviceData.categoryId || serviceData.category || ''),
+              availability: serviceData.availability || "متاح 24/7",
+              price: serviceData.price || serviceData.pricing || getDefaultPrice(serviceData.categoryId || serviceData.category || '')
             };
           }
         });

@@ -313,11 +313,13 @@ const Home: React.FC = () => {
       </section>
 
       {/* Services Section */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-gradient-to-b from-[#e0f2fe] to-[#f0faff]">
-        <div className="container-custom px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12 scroll-animate opacity-0 translate-y-8">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-800 mb-4">خدماتنا</h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16 scroll-animate opacity-0 translate-y-8">
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-4">
+              خدماتنا
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
               نوفر لك مجموعة متنوعة من الخدمات لتلبية احتياجاتك اليومية
             </p>
           </div>
@@ -326,13 +328,13 @@ const Home: React.FC = () => {
             {loading ? (
               <div className="col-span-full text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-600 mx-auto"></div>
-                <p className="mt-4 text-slate-600">جاري تحميل الخدمات...</p>
+                <p className="mt-4 text-slate-600">جاري تحميل الفئات...</p>
               </div>
             ) : categories.length > 0 ? (
               categories.map((category, index) => (
                 <Link
                   key={category.id}
-                  to={`/services/${category.id}`}
+                  to={`/services?category=${category.id}`}
                   className="group bg-white/80 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-xl transform transition-all duration-300 hover:-translate-y-1 border border-cyan-100/50 scroll-animate opacity-0 translate-y-8"
                   style={{animationDelay: `${index * 0.1}s`}}
                 >
@@ -357,17 +359,17 @@ const Home: React.FC = () => {
               ))
             ) : (
               <div className="col-span-full text-center py-12">
-                <p className="text-slate-600">لا توجد خدمات متاحة حالياً</p>
+                <p className="text-slate-600">لا توجد فئات متاحة حالياً</p>
               </div>
             )}
           </div>
 
           <div className="text-center mt-12 scroll-animate opacity-0 translate-y-8">
             <Link
-              to="/categories"
+              to="/services"
               className="inline-flex items-center gap-2 px-6 py-3 bg-cyan-100 text-cyan-700 rounded-lg hover:bg-cyan-200 transition-colors duration-300"
             >
-              <span>عرض كل الفئات</span>
+              <span>عرض جميع الخدمات</span>
               <ArrowRight className="w-5 h-5 transform -rotate-180" />
             </Link>
           </div>

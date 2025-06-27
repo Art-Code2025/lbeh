@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Plus, Trash2, Loader2 } from 'lucide-react';
+import { X, Upload, Plus, Trash2, Loader2, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { uploadImageToFirebase, isFirebaseStorageUrl, testFirebaseStorageConnection } from '../services/firebaseStorage';
+import { 
+  uploadImageToCloudinary, 
+  isCloudinaryUrl, 
+  testCloudinaryConnection,
+  compressImageBeforeUpload,
+  optimizeCloudinaryUrl 
+} from '../services/cloudinary';
 
 interface ServiceModalProps {
   isOpen: boolean;
@@ -35,6 +41,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const [newFeature, setNewFeature] = useState('');
   const [uploading, setUploading] = useState(false);
   const [connectionTested, setConnectionTested] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (editingService) {
@@ -51,6 +59,11 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         availability: editingService.availability || '',
         price: editingService.price || ''
       });
+      
+      // تعيين معاينة الصورة إذا كانت موجودة
+      if (editingService.mainImage) {
+        setImagePreview(editingService.mainImage);
+      }
     } else {
       // Reset form for new service
       setFormData({
@@ -66,6 +79,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         availability: '',
         price: ''
       });
+      setImagePreview(null);
     }
   }, [editingService, isOpen]);
 
@@ -78,19 +92,19 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
 
   const testConnection = async () => {
     try {
-      console.log('🔍 اختبار اتصال Firebase Storage...');
-      const isConnected = await testFirebaseStorageConnection();
+      console.log('🔍 اختبار اتصال Cloudinary...');
+      const isConnected = await testCloudinaryConnection();
       if (isConnected) {
-        console.log('✅ Firebase Storage جاهز للاستخدام');
-        toast.success('Firebase Storage جاهز ومتصل');
+        console.log('✅ Cloudinary جاهز للاستخدام');
+        toast.success('🎉 Cloudinary جاهز ومتصل بنجاح!');
       } else {
-        console.error('❌ فشل في الاتصال بـ Firebase Storage');
-        toast.error('مشكلة في الاتصال بـ Firebase Storage');
+        console.error('❌ فشل في الاتصال بـ Cloudinary');
+        toast.error('❌ مشكلة في الاتصال بـ Cloudinary');
       }
       setConnectionTested(true);
     } catch (error) {
       console.error('❌ خطأ في اختبار الاتصال:', error);
-      toast.error('خطأ في اختبار الاتصال');
+      toast.error('❌ خطأ في اختبار الاتصال');
     }
   };
 
@@ -107,32 +121,91 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
-      console.log('📤 بداية رفع الصورة:', {
+      console.log('📤 بداية رفع الصورة إلى Cloudinary:', {
         name: file.name,
         size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
         type: file.type
       });
       
       setUploading(true);
+      setUploadProgress(0);
+      
       try {
-        const imageUrl = await uploadImageToFirebase(file);
+        // إنشاء معاينة فورية للصورة
+        const previewUrl = URL.createObjectURL(file);
+        setImagePreview(previewUrl);
+        
+        // محاكاة تقدم الرفع
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            if (prev >= 90) {
+              clearInterval(progressInterval);
+              return 90;
+            }
+            return prev + 10;
+          });
+        }, 200);
+        
+        // ضغط الصورة إذا كانت كبيرة
+        let fileToUpload = file;
+        if (file.size > 2 * 1024 * 1024) { // أكبر من 2 ميجابايت
+          console.log('🗜️ ضغط الصورة قبل الرفع...');
+          toast.info('🗜️ جاري ضغط الصورة لتحسين الأداء...');
+          fileToUpload = await compressImageBeforeUpload(file, 1920, 1080, 0.85);
+        }
+        
+        const imageUrl = await uploadImageToCloudinary(fileToUpload);
+        
+        clearInterval(progressInterval);
+        setUploadProgress(100);
+        
         if (imageUrl) {
+          // تحسين رابط الصورة للعرض المحسن
+          const optimizedUrl = optimizeCloudinaryUrl(imageUrl, {
+            quality: 'auto',
+            format: 'auto'
+          });
+          
           setFormData(prev => ({
             ...prev,
-            mainImage: imageUrl
+            mainImage: optimizedUrl
           }));
-          console.log('🎉 تم رفع الصورة بنجاح:', imageUrl);
-          toast.success('تم رفع الصورة الرئيسية بنجاح');
+          
+          setImagePreview(optimizedUrl);
+          
+          console.log('🎉 تم رفع الصورة بنجاح إلى Cloudinary:', optimizedUrl);
+          toast.success('🎉 تم رفع الصورة بنجاح إلى Cloudinary!');
         } else {
           console.error('❌ فشل في رفع الصورة');
-          toast.error('فشل في رفع الصورة');
+          toast.error('❌ فشل في رفع الصورة');
+          setImagePreview(null);
         }
       } catch (error) {
         console.error('❌ خطأ في رفع الصورة:', error);
-        toast.error('فشل في رفع الصورة الرئيسية');
+        toast.error('❌ فشل في رفع الصورة الرئيسية');
+        setImagePreview(null);
       } finally {
         setUploading(false);
+        setUploadProgress(0);
+        // إعادة تعيين input للسماح بإعادة اختيار نفس الملف
+        if (e.target) {
+          e.target.value = '';
+        }
       }
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setFormData(prev => ({ ...prev, mainImage: '' }));
+    setImagePreview(null);
+    toast.info('🗑️ تم حذف الصورة');
+  };
+
+  const handleChangeImage = () => {
+    // تشغيل input الملف لاختيار صورة جديدة
+    const fileInput = document.getElementById('mainImage') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.click();
     }
   };
 
@@ -143,6 +216,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         features: [...prev.features, newFeature.trim()]
       }));
       setNewFeature('');
+      toast.success('✅ تم إضافة الميزة');
     }
   };
 
@@ -151,28 +225,33 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       ...prev,
       features: prev.features.filter((_, i) => i !== index)
     }));
+    toast.info('🗑️ تم حذف الميزة');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name || !formData.category) {
-      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      toast.error('❌ يرجى ملء جميع الحقول المطلوبة');
       return;
     }
     
-    // التأكد من أن الصور محفوظة في Firebase Storage
+    // التأكد من أن الصور محفوظة في Cloudinary
     const serviceData = {
       ...formData,
       mainImage: formData.mainImage || '',
     };
     
-    console.log('💾 Saving service with Firebase Storage images:', {
-      mainImage: serviceData.mainImage ? 'Firebase Storage URL present' : 'No main image',
+    console.log('💾 حفظ الخدمة مع صور Cloudinary:', {
+      mainImage: serviceData.mainImage ? 'Cloudinary URL موجود' : 'لا توجد صورة رئيسية',
+      isCloudinaryMainImage: serviceData.mainImage ? isCloudinaryUrl(serviceData.mainImage) : false,
+      featuresCount: serviceData.features.length
     });
     
     onSave(serviceData);
     onClose();
+    
+    toast.success('🎉 تم حفظ الخدمة بنجاح!');
   };
 
   if (!isOpen) return null;
@@ -308,7 +387,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             </div>
           </div>
 
-          {/* Images */}
+          {/* Image Upload */}
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -329,13 +408,13 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                     className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg cursor-pointer transition-colors ${
                       uploading 
                         ? 'bg-gray-500 cursor-not-allowed' 
-                        : 'bg-blue-500 hover:bg-blue-600'
+                        : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
                     }`}
                   >
                     {uploading ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        جاري الرفع...
+                        جاري الرفع... {uploadProgress}%
                       </>
                     ) : (
                       <>
@@ -344,28 +423,103 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                       </>
                     )}
                   </label>
-                  <span className="text-sm text-gray-400">يتم الرفع إلى Firebase Storage - الحد الأقصى: 10 ميجابايت</span>
+                  <span className="text-sm text-gray-400">
+                    يتم الرفع إلى Cloudinary - الحد الأقصى: 10 ميجابايت
+                  </span>
                 </div>
-                {formData.mainImage && (
-                  <div className="relative inline-block">
+
+                {/* Upload Progress */}
+                {uploading && (
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                )}
+
+                {/* Image Preview */}
+                {imagePreview && (
+                  <div className="relative inline-block group">
                     <img
-                      src={formData.mainImage}
-                      alt="الصورة الرئيسية"
-                      className="w-32 h-32 object-cover rounded-lg border border-gray-600"
+                      src={imagePreview}
+                      alt="معاينة الصورة الرئيسية"
+                      className="w-64 h-40 object-cover rounded-xl border border-gray-600 shadow-lg transition-all duration-300 group-hover:shadow-xl"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, mainImage: '' }))}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                      disabled={uploading}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                    {formData.mainImage.includes('firebase.storage') && (
-                      <div className="absolute -bottom-2 -left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-                        ☁️ Firebase Storage
+                    
+                    {/* Overlay with actions */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl flex items-center justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleChangeImage}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-lg"
+                        disabled={uploading}
+                      >
+                        <Upload className="w-4 h-4" />
+                        تغيير
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-lg"
+                        disabled={uploading}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        حذف
+                      </button>
+                    </div>
+                    
+                    {/* Cloudinary Badge */}
+                    {formData.mainImage && isCloudinaryUrl(formData.mainImage) && (
+                      <div className="absolute top-3 left-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
+                        <span>☁️</span>
+                        <span>Cloudinary</span>
                       </div>
                     )}
+                    
+                    {/* Upload Progress Overlay */}
+                    {uploading && (
+                      <div className="absolute inset-0 bg-black/70 rounded-xl flex items-center justify-center">
+                        <div className="text-center text-white">
+                          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+                          <p className="text-sm">جاري الرفع... {uploadProgress}%</p>
+                          <div className="w-32 bg-gray-700 rounded-full h-2 mt-2">
+                            <div 
+                              className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${uploadProgress}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* No Image Placeholder */}
+                {!imagePreview && !uploading && (
+                  <div className="w-64 h-40 border-2 border-dashed border-gray-600 rounded-xl flex items-center justify-center hover:border-gray-500 transition-colors cursor-pointer group"
+                       onClick={() => document.getElementById('mainImage')?.click()}>
+                    <div className="text-center text-gray-400 group-hover:text-gray-300 transition-colors">
+                      <ImageIcon className="w-12 h-12 mx-auto mb-3" />
+                      <p className="text-sm font-medium">انقر لإضافة صورة</p>
+                      <p className="text-xs">أو اسحب الصورة هنا</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Progress Bar (when no preview) */}
+                {uploading && !imagePreview && (
+                  <div className="w-64 space-y-3">
+                    <div className="flex items-center gap-3 text-gray-300">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span className="text-sm">جاري رفع الصورة... {uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-700 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -389,14 +543,14 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
               <button
                 type="button"
                 onClick={handleAddFeature}
-                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
               </button>
             </div>
             <ul className="space-y-2">
               {formData.features.map((feature, index) => (
-                <li key={index} className="flex items-center justify-between bg-gray-700 p-3 rounded-lg border border-gray-600">
+                <li key={index} className="flex items-center justify-between bg-gray-700/50 p-3 rounded-lg border border-gray-600">
                   <span className="text-white">{feature}</span>
                   <button
                     type="button"
@@ -420,9 +574,10 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all duration-200 shadow-lg"
+              disabled={uploading}
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {editingService ? 'تحديث الخدمة' : 'إضافة الخدمة'}
+              {uploading ? 'جاري الرفع...' : editingService ? 'تحديث الخدمة' : 'إضافة الخدمة'}
             </button>
           </div>
         </form>

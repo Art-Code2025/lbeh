@@ -143,40 +143,58 @@ function Services() {
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       
-      // Get all categories as services
-      const categoriesRef = collection(db, 'categories');
-      const snapshot = await getDocs(categoriesRef);
-      const services: any[] = [];
+      // جلب الخدمات الفعلية من مجموعة services
+      const servicesRef = collection(db, 'services');
+      const servicesSnapshot = await getDocs(servicesRef);
+      const servicesData: Service[] = [];
       
-      snapshot.forEach((doc) => {
-        const category = doc.data();
-        services.push({
-          id: doc.id,
-          name: category.name,
-          category: doc.id,
-          categoryName: category.name,
-          homeShortDescription: category.description,
-          detailsShortDescription: category.description,
-          description: getDetailedDescription(doc.id),
-          mainImage: getDefaultImage(doc.id),
-          detailedImages: [getDefaultImage(doc.id)],
-          imageDetails: [category.description],
-          features: getDefaultFeatures(doc.id),
-          duration: getDefaultDuration(doc.id),
-          availability: "متاح 24/7",
-          price: getDefaultPrice(doc.id)
+      servicesSnapshot.forEach((doc) => {
+        const serviceData = doc.data();
+        servicesData.push({
+          id: parseInt(doc.id) || Math.floor(Math.random() * 10000), // Convert string ID to number
+          name: serviceData.name || '',
+          category: serviceData.categoryId || serviceData.category || '',
+          categoryName: serviceData.categoryName || '',
+          homeShortDescription: serviceData.homeShortDescription || '',
+          detailsShortDescription: serviceData.detailsShortDescription || serviceData.homeShortDescription || '',
+          description: serviceData.description || serviceData.homeShortDescription || '',
+          mainImage: serviceData.mainImage || '',
+          detailedImages: serviceData.detailedImages || [],
+          imageDetails: serviceData.imageDetails || [],
+          features: serviceData.features || [],
+          duration: serviceData.duration || '',
+          availability: serviceData.availability || "متاح 24/7",
+          price: serviceData.price || serviceData.pricing || ''
         });
       });
 
-      setServices(services || []);
+      // جلب الفئات أيضاً لعرض أسماء الفئات
+      const categoriesRef = collection(db, 'categories');
+      const categoriesSnapshot = await getDocs(categoriesRef);
+      const categoriesMap: Record<string, string> = {};
+      
+      categoriesSnapshot.forEach((doc) => {
+        const categoryData = doc.data();
+        categoriesMap[doc.id] = categoryData.name;
+      });
+
+      // تحديث أسماء الفئات في الخدمات
+      servicesData.forEach(service => {
+        if (categoriesMap[service.category]) {
+          service.categoryName = categoriesMap[service.category];
+        }
+      });
+
+      setServices(servicesData);
       
       // تجميع الخدمات حسب الفئات
-      const categories = groupServicesByCategory(services || []);
+      const categories = groupServicesByCategory(servicesData);
       setServiceCategories(categories);
       
-    } catch (error: any) {
-      setError(error.message || 'حدث خطأ أثناء جلب الخدمات');
-      toast.error(error.message || 'حدث خطأ أثناء جلب الخدمات');
+      console.log('✅ Services loaded:', servicesData.length);
+    } catch (error) {
+      console.error('❌ Error fetching services:', error);
+      setError('فشل في تحميل الخدمات');
     } finally {
       setLoading(false);
     }
@@ -230,41 +248,47 @@ function Services() {
 
   // تجميع الخدمات حسب الفئات
   const groupServicesByCategory = (services: Service[]): ServiceCategory[] => {
-    const categories: ServiceCategory[] = [
-      {
-        id: 'daily_services',
-        name: 'الخدمات اليومية / المشاوير الداخلية',
-        description: 'خدمات التوصيل والمشاوير اليومية داخل المدينة',
-        icon: <Truck className="w-6 h-6" />,
-        color: 'blue',
-        services: []
-      },
-      {
-        id: 'external_errands',
-        name: 'المشاوير الخارجية',
-        description: 'المشاوير والتوصيل للمسافات البعيدة بين المدن',
-        icon: <MapPin className="w-6 h-6" />,
-        color: 'green',
-        services: []
-      },
-      {
-        id: 'home_maintenance',
-        name: 'الأعمال المنزلية والفنية',
-        description: 'خدمات الصيانة والإصلاح المنزلي المتخصصة',
-        icon: <Wrench className="w-6 h-6" />,
-        color: 'orange',
-        services: []
-      }
-    ];
-
+    // إنشاء فئات ديناميكية بناء على الخدمات الموجودة
+    const categoryMap = new Map<string, ServiceCategory>();
+    
     services.forEach(service => {
-      const category = categories.find(cat => cat.id === service.category);
+      if (!categoryMap.has(service.category)) {
+        // إنشاء فئة جديدة
+        let categoryInfo = {
+          id: service.category,
+          name: service.categoryName,
+          description: `خدمات ${service.categoryName}`,
+          icon: <Package className="w-6 h-6" />,
+          color: 'blue',
+          services: []
+        };
+
+        // تحديد الأيقونة والوصف بناء على نوع الفئة
+        if (service.category.includes('internal') || service.category.includes('delivery')) {
+          categoryInfo.icon = <Truck className="w-6 h-6" />;
+          categoryInfo.color = 'blue';
+          categoryInfo.description = 'خدمات التوصيل والمشاوير اليومية داخل المدينة';
+        } else if (service.category.includes('external') || service.category.includes('trips')) {
+          categoryInfo.icon = <MapPin className="w-6 h-6" />;
+          categoryInfo.color = 'green';
+          categoryInfo.description = 'المشاوير والتوصيل للمسافات البعيدة بين المدن';
+        } else if (service.category.includes('maintenance') || service.category.includes('home')) {
+          categoryInfo.icon = <Wrench className="w-6 h-6" />;
+          categoryInfo.color = 'orange';
+          categoryInfo.description = 'خدمات الصيانة والإصلاح المنزلي المتخصصة';
+        }
+
+        categoryMap.set(service.category, categoryInfo);
+      }
+      
+      // إضافة الخدمة للفئة
+      const category = categoryMap.get(service.category);
       if (category) {
         category.services.push(service);
       }
     });
 
-    return categories;
+    return Array.from(categoryMap.values());
   };
 
   const getImageSrc = (image: string) => {
@@ -456,7 +480,7 @@ function Services() {
                       {service.categoryName}
                     </span>
                     <Link
-                      to={`/service/${service.id}`}
+                      to={`/services/${service.id}`}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors"
                     >
                       التفاصيل

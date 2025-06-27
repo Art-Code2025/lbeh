@@ -5,7 +5,6 @@ interface Provider {
   id: string;
   name: string;
   category: string;
-  phone: string;
   whatsapp: string;
   services: string[];
   rating: number;
@@ -226,7 +225,7 @@ const ProvidersModal: React.FC<ProvidersModalProps> = ({ booking, isOpen, onClos
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <Phone className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-300">{provider.phone}</span>
+                          <span className="text-sm text-gray-300">{provider.whatsapp}</span>
                         </div>
                         
                         <div className="flex flex-wrap gap-2">

@@ -71,7 +71,7 @@ import { seedOnlyMissingData, clearAllCollections, seedFirebaseData } from './ut
 import { fixCategoriesStructure, checkDatabaseStructure, completelyResetDatabase } from './utils/fixDatabase';
 import { db } from './firebase.config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import { testFirebaseStorageConnection, diagnoseFirebaseStorage } from './services/firebaseStorage';
+import { testCloudinaryConnection, isCloudinaryUrl } from './services/cloudinary';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement);
 
@@ -145,7 +145,6 @@ interface Provider {
   id: string;
   name: string;
   category: 'internal_delivery' | 'external_trips' | 'home_maintenance';
-  phone: string;
   whatsapp: string;
   services: string[];
   rating: number;
@@ -870,47 +869,20 @@ function Dashboard() {
     currentPage * ITEMS_PER_PAGE
   );
 
-  const handleTestFirebaseStorage = async () => {
+  const handleTestCloudinary = async () => {
     try {
       setLoading(true);
-      toast.info('🔍 جاري اختبار Firebase Storage...');
+      toast.info('🔍 جاري اختبار Cloudinary...');
       
-      const isConnected = await testFirebaseStorageConnection();
+      const isConnected = await testCloudinaryConnection();
       if (isConnected) {
-        toast.success('✅ Firebase Storage يعمل بشكل مثالي!');
+        toast.success('✅ Cloudinary يعمل بشكل مثالي!');
       } else {
-        toast.error('❌ مشكلة في Firebase Storage');
+        toast.error('❌ مشكلة في Cloudinary');
       }
     } catch (error) {
-      console.error('Error testing Firebase Storage:', error);
-      toast.error('❌ فشل في اختبار Firebase Storage');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDiagnoseFirebaseStorage = async () => {
-    try {
-      setLoading(true);
-      toast.info('🔍 جاري تشخيص Firebase Storage...');
-      
-      const diagnosis = await diagnoseFirebaseStorage();
-      
-      if (diagnosis.configured && !diagnosis.corsIssue && !diagnosis.rulesIssue) {
-        toast.success(diagnosis.message);
-      } else {
-        toast.error(diagnosis.message);
-        
-        if (diagnosis.corsIssue) {
-          console.error('🔧 CORS Issue detected. Check FIREBASE_STORAGE_SETUP.md for solutions.');
-        }
-        if (diagnosis.rulesIssue) {
-          console.error('🔧 Rules Issue detected. Update Firebase Storage Rules.');
-        }
-      }
-    } catch (error) {
-      console.error('Error diagnosing Firebase Storage:', error);
-      toast.error('❌ فشل في تشخيص Firebase Storage');
+      console.error('Error testing Cloudinary:', error);
+      toast.error('❌ فشل في اختبار Cloudinary');
     } finally {
       setLoading(false);
     }
@@ -1057,20 +1029,12 @@ function Dashboard() {
                 إعادة إنشاء البيانات
               </button>
               <button
-                onClick={handleTestFirebaseStorage}
+                onClick={handleTestCloudinary}
                 disabled={loading}
                 className="w-full flex items-center gap-2 px-3 py-2 text-xs bg-cyan-500/20 text-cyan-400 rounded-lg hover:bg-cyan-500/30 transition-colors border border-cyan-500/30 disabled:opacity-50"
               >
                 <Upload className="w-3 h-3" />
                 اختبار رفع الصور
-              </button>
-              <button
-                onClick={handleDiagnoseFirebaseStorage}
-                disabled={loading}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs bg-yellow-500/20 text-yellow-400 rounded-lg hover:bg-yellow-500/30 transition-colors border border-yellow-500/30 disabled:opacity-50"
-              >
-                <Shield className="w-3 h-3" />
-                تشخيص Firebase Storage
               </button>
             </div>
 
@@ -1346,11 +1310,11 @@ function Dashboard() {
                         </div>
                       )}
 
-                      {/* Firebase Storage Badge */}
-                      {service.mainImage && service.mainImage.includes('firebasestorage.googleapis.com') && (
-                        <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                          <span>🔥</span>
-                          <span>Firebase</span>
+                      {/* Cloudinary Badge */}
+                      {service.mainImage && isCloudinaryUrl(service.mainImage) && (
+                        <div className="absolute top-2 left-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                          <span>☁️</span>
+                          <span>Cloudinary</span>
                         </div>
                       )}
                     </div>

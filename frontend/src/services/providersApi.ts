@@ -9,7 +9,6 @@ interface Provider {
     id: string;
     name: string;
     category: 'internal_delivery' | 'external_trips' | 'home_maintenance';
-    phone: string;
     whatsapp: string;
     services: string[];
     rating: number;

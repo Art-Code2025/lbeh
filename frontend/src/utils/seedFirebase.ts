@@ -56,7 +56,6 @@ const realProviders = [
   {
     name: 'محمد عبدالله الأحمد',
     category: 'internal_delivery',
-    phone: '+966550123456',
     whatsapp: '+966550123456',
     services: ['توصيل طلبات'],
     rating: 4.5,
@@ -67,7 +66,6 @@ const realProviders = [
   {
     name: 'عبدالعزيز سعد المطيري',
     category: 'external_trips',
-    phone: '+966551234567',
     whatsapp: '+966551234567',
     services: ['رحلات بين المدن'],
     rating: 4.7,
@@ -78,7 +76,6 @@ const realProviders = [
   {
     name: 'أحمد فهد الشهري',
     category: 'home_maintenance',
-    phone: '+966552345678',
     whatsapp: '+966552345678',
     services: ['صيانة عامة'],
     rating: 4.3,
