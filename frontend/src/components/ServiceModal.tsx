@@ -5,6 +5,7 @@ import {
   uploadImageToCloudinary, 
   isCloudinaryUrl, 
   testCloudinaryConnection,
+  testCloudinaryDirect,
   compressImageBeforeUpload,
   optimizeCloudinaryUrl 
 } from '../services/cloudinary';
@@ -93,13 +94,18 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const testConnection = async () => {
     try {
       console.log('🔍 اختبار اتصال Cloudinary...');
+      
+      // استخدام الاختبار المباشر المفصل
+      await testCloudinaryDirect();
+      
+      // اختبار الاتصال العادي
       const isConnected = await testCloudinaryConnection();
       if (isConnected) {
         console.log('✅ Cloudinary جاهز للاستخدام');
         toast.success('🎉 Cloudinary جاهز ومتصل بنجاح!');
       } else {
         console.error('❌ فشل في الاتصال بـ Cloudinary');
-        toast.error('❌ مشكلة في الاتصال بـ Cloudinary');
+        toast.error('❌ مشكلة في الاتصال بـ Cloudinary - تحقق من Upload Presets');
       }
       setConnectionTested(true);
     } catch (error) {
