@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 // Cloudinary configuration - Simple and working
 export const CLOUDINARY_CONFIG = {
   cloudName: "lbeh",
-  uploadPreset: "ml_default"
+  uploadPreset: "unsigned_preset"
 };
 
 /**
