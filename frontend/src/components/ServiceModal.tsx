@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Upload, Plus, Trash2, Loader2, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { 
@@ -45,6 +45,10 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('');
+  
+  // استخدام useRef لتتبع ما إذا كانت البيانات تم تحميلها بالفعل
+  const dataLoadedRef = useRef(false);
+  const modalOpenedRef = useRef(false);
 
   // UseEffect to sync the uploaded image URL to the main form data
   // This solves the stale state issue when saving the form.
@@ -107,12 +111,18 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
 
   useEffect(() => {
     // فقط عند فتح Modal جديد أو تغيير الخدمة المراد تعديلها
-    if (!isOpen) return; // لا تفعل شيئاً إذا كان Modal مغلق
+    if (!isOpen) {
+      // إعادة تعيين refs عند إغلاق Modal
+      dataLoadedRef.current = false;
+      modalOpenedRef.current = false;
+      return;
+    }
     
     console.log('🔄 useEffect triggered - isOpen:', isOpen, 'editingService:', editingService);
+    console.log('🔄 Refs state:', { dataLoaded: dataLoadedRef.current, modalOpened: modalOpenedRef.current });
     
     if (editingService) {
-      // تعديل خدمة موجودة
+      // تعديل خدمة موجودة - تحميل دائماً
       console.log('📝 تحميل بيانات خدمة موجودة:', editingService.name);
       setFormData({
         name: editingService.name || '',
@@ -136,30 +146,35 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         setImagePreview(null);
         setUploadedImageUrl('');
       }
+      
+      dataLoadedRef.current = true;
     } else {
-      // إضافة خدمة جديدة - لا تمسح البيانات إذا كان Modal مفتوح بالفعل
-      // فقط إعادة تعيين عند فتح Modal لأول مرة
-      console.log('🆕 إضافة خدمة جديدة');
-      
-      // إعادة تعيين البيانات النصية فقط، والاحتفاظ بالصور
-      setFormData(prev => ({
-        name: '',
-        category: '',
-        categoryName: '',
-        homeShortDescription: '',
-        detailsShortDescription: '',
-        description: '',
-        mainImage: prev.mainImage, // احتفظ بالصورة الموجودة
-        features: [],
-        duration: '',
-        availability: '',
-        price: ''
-      }));
-      
-      // لا تمسح الصور إذا كانت موجودة
-      console.log('🔒 الاحتفاظ بحالة الصور الحالية');
+      // إضافة خدمة جديدة - تحقق من الحالة
+      if (!modalOpenedRef.current) {
+        // أول مرة يتم فتح Modal لخدمة جديدة
+        console.log('🆕 إضافة خدمة جديدة - أول فتح');
+        setFormData({
+          name: '',
+          category: '',
+          categoryName: '',
+          homeShortDescription: '',
+          detailsShortDescription: '',
+          description: '',
+          mainImage: '',
+          features: [],
+          duration: '',
+          availability: '',
+          price: ''
+        });
+        setImagePreview(null);
+        setUploadedImageUrl('');
+        modalOpenedRef.current = true;
+      } else {
+        // Modal مفتوح بالفعل - لا تمسح البيانات
+        console.log('🔒 Modal مفتوح بالفعل - الاحتفاظ بالبيانات');
+      }
     }
-  }, [editingService]); // إزالة isOpen من dependencies
+  }, [editingService, isOpen]);
 
   // useEffect منفصل لإعادة تعيين connectionTested عند فتح Modal
   useEffect(() => {
@@ -288,6 +303,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             mainImage: optimizedUrl
           }));
           
+          // تعيين أن البيانات تم تحميلها (صورة مرفوعة)
+          dataLoadedRef.current = true;
+          
           console.log('🎉 Upload successful, optimized URL generated:', optimizedUrl);
           console.log('📋 تم تحديث formData.mainImage:', optimizedUrl);
           console.log('🔒 تم حفظ URL في uploadedImageUrl:', optimizedUrl);
@@ -298,7 +316,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
               imagePreview: optimizedUrl,
               uploadedImageUrl: optimizedUrl,
               formDataMainImage: optimizedUrl,
-              isValidCloudinaryUrl: isCloudinaryUrl(optimizedUrl)
+              isValidCloudinaryUrl: isCloudinaryUrl(optimizedUrl),
+              dataLoaded: dataLoadedRef.current
             });
             toast.success('🎉 تم رفع الصورة بنجاح!');
           }, 100);
