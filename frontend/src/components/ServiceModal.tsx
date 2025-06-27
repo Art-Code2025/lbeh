@@ -44,6 +44,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const [connectionTested, setConnectionTested] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('');
 
   // UseEffect to sync the uploaded image URL to the main form data
   // This solves the stale state issue when saving the form.
@@ -105,6 +106,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           price: ''
         });
         setImagePreview(null);
+        setUploadedImageUrl(''); // إعادة تعيين URL المحفوظ
       }
     }
   }, [editingService]); // إزالة isOpen من dependencies
@@ -196,6 +198,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           });
 
           setImagePreview(optimizedUrl);
+          setUploadedImageUrl(optimizedUrl); // حفظ URL بشكل منفصل
           
           // تحديث formData مباشرة للتأكد من الحفظ الصحيح
           setFormData(prev => ({
@@ -205,6 +208,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           
           console.log('🎉 Upload successful, optimized URL generated:', optimizedUrl);
           console.log('📋 تم تحديث formData.mainImage:', optimizedUrl);
+          console.log('🔒 تم حفظ URL في uploadedImageUrl:', optimizedUrl);
           
           // تأخير قصير للتأكد من تحديث الحالة
           setTimeout(() => {
@@ -216,6 +220,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           console.error('❌ فشل في رفع الصورة');
           toast.error('❌ فشل في رفع الصورة');
           setImagePreview(null);
+          setUploadedImageUrl(''); // مسح URL عند الفشل
         }
       } catch (error) {
         console.error('❌ خطأ في رفع الصورة:', error);
@@ -235,6 +240,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const handleRemoveImage = () => {
     setFormData(prev => ({ ...prev, mainImage: '' }));
     setImagePreview(null);
+    setUploadedImageUrl(''); // مسح URL المحفوظ
     toast.info('🗑️ تم حذف الصورة');
   };
 
@@ -279,8 +285,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       return;
     }
     
-    // التأكد من أن الصور محفوظة في Cloudinary - استخدام imagePreview كمصدر احتياطي
-    const finalMainImage = formData.mainImage || (imagePreview && isCloudinaryUrl(imagePreview) ? imagePreview : '');
+    // التأكد من أن الصور محفوظة في Cloudinary - استخدام uploadedImageUrl كمصدر أساسي
+    const finalMainImage = uploadedImageUrl || formData.mainImage || (imagePreview && isCloudinaryUrl(imagePreview) ? imagePreview : '');
     
     const serviceData = {
       ...formData,
@@ -288,10 +294,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     };
     
     console.log('🔍 تفاصيل البيانات قبل الحفظ:', {
+      uploadedImageUrl: uploadedImageUrl,
       imagePreview: imagePreview,
       formDataMainImage: formData.mainImage,
       finalMainImage: finalMainImage,
       serviceDataMainImage: serviceData.mainImage,
+      isCloudinaryUploadedUrl: uploadedImageUrl ? isCloudinaryUrl(uploadedImageUrl) : false,
       isCloudinaryPreview: imagePreview ? isCloudinaryUrl(imagePreview) : false,
       isCloudinaryFormData: formData.mainImage ? isCloudinaryUrl(formData.mainImage) : false,
       uploading: uploading
@@ -498,7 +506,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                   </span>
                   
                   {/* حالة الصورة */}
-                  {!uploading && formData.mainImage && isCloudinaryUrl(formData.mainImage) && (
+                  {!uploading && (uploadedImageUrl || (formData.mainImage && isCloudinaryUrl(formData.mainImage))) && (
                     <div className="flex items-center gap-2 text-sm text-green-400">
                       <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                       <span>✅ الصورة جاهزة للحفظ</span>
