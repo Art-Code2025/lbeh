@@ -281,14 +281,16 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
                 اسم الخدمة *
               </label>
               <input
+                id="name"
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
+                autoComplete="organization-title"
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
                 placeholder="أدخل اسم الخدمة"
                 required
@@ -296,13 +298,15 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-2">
                 الفئة *
               </label>
               <select
+                id="category"
                 name="category"
                 value={formData.category}
                 onChange={handleInputChange}
+                autoComplete="off"
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
                 required
               >
@@ -319,14 +323,16 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           {/* Descriptions */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="homeShortDescription" className="block text-sm font-medium text-gray-300 mb-2">
                 وصف مختصر *
               </label>
               <input
+                id="homeShortDescription"
                 type="text"
                 name="homeShortDescription"
                 value={formData.homeShortDescription}
                 onChange={handleInputChange}
+                autoComplete="off"
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
                 placeholder="وصف مختصر للخدمة"
                 required
@@ -334,14 +340,16 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-2">
                 وصف تفصيلي
               </label>
               <textarea
+                id="description"
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
                 rows={4}
+                autoComplete="off"
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400 resize-none"
                 placeholder="وصف تفصيلي للخدمة..."
               />
@@ -351,42 +359,48 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           {/* Service Details */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="price" className="block text-sm font-medium text-gray-300 mb-2">
                 السعر
               </label>
               <input
+                id="price"
                 type="text"
                 name="price"
                 value={formData.price}
                 onChange={handleInputChange}
+                autoComplete="off"
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
                 placeholder="مثال: 50 ريال"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="duration" className="block text-sm font-medium text-gray-300 mb-2">
                 المدة المتوقعة
               </label>
               <input
+                id="duration"
                 type="text"
                 name="duration"
                 value={formData.duration}
                 onChange={handleInputChange}
+                autoComplete="off"
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
                 placeholder="مثال: 30 دقيقة"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="availability" className="block text-sm font-medium text-gray-300 mb-2">
                 ساعات العمل
               </label>
               <input
+                id="availability"
                 type="text"
                 name="availability"
                 value={formData.availability}
                 onChange={handleInputChange}
+                autoComplete="off"
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
                 placeholder="مثال: 24/7"
               />
@@ -545,6 +559,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
                 placeholder="أضف ميزة جديدة"
                 onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddFeature())}
+                aria-label="New feature"
               />
               <button
                 type="button"
