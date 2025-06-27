@@ -53,7 +53,10 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedCategory) {
+    // استخدام selectedCategory أو service.category كبديل
+    const currentCategory = selectedCategory || (service && service.category);
+    
+    if (!currentCategory) {
       toast.error('❌ يرجى اختيار نوع الخدمة أولاً');
       return;
     }
@@ -64,7 +67,7 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
     }
 
     // التحقق من الحقول المطلوبة حسب نوع الخدمة
-    if (selectedCategory === 'external_trips') {
+    if (currentCategory === 'external_trips') {
       if (!formData.selectedDestination) {
         toast.error('❌ يرجى اختيار وجهة للمشوار الخارجي');
         return;
@@ -75,7 +78,7 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
       }
     }
 
-    if (selectedCategory === 'home_maintenance' && !formData.serviceDetails) {
+    if (currentCategory === 'home_maintenance' && !formData.serviceDetails) {
       toast.error('❌ يرجى وصف نوع الصيانة المطلوبة');
       return;
     }
@@ -85,23 +88,23 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
       
       // تحديد السعر حسب نوع الخدمة
       let estimatedPrice = '';
-      if (selectedCategory === 'internal_delivery') {
+      if (currentCategory === 'internal_delivery') {
         estimatedPrice = '20 ريال';
-      } else if (selectedCategory === 'external_trips') {
+      } else if (currentCategory === 'external_trips') {
         if (formData.selectedDestination === 'khamis_mushait') {
           estimatedPrice = '250 ريال';
         } else if (formData.selectedDestination === 'abha') {
           estimatedPrice = '300 ريال';
         }
-      } else if (selectedCategory === 'home_maintenance') {
+      } else if (currentCategory === 'home_maintenance') {
         estimatedPrice = 'على حسب المطلوب';
       }
       
       // تحضير بيانات الحجز
       const bookingData = {
         serviceId: service?.id || 'quick-booking',
-        serviceName: service?.name || getServiceName(selectedCategory),
-        serviceCategory: selectedCategory,
+        serviceName: service?.name || getServiceName(currentCategory),
+        serviceCategory: currentCategory,
         fullName: formData.fullName,
         phoneNumber: formData.phoneNumber,
         address: formData.address,
@@ -110,7 +113,7 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
         estimatedPrice: estimatedPrice,
         
         // تفاصيل إضافية حسب نوع الخدمة
-        ...(selectedCategory === 'external_trips' && {
+        ...(currentCategory === 'external_trips' && {
           startLocation: formData.startLocation,
           destination: formData.endLocation,
           selectedDestination: formData.selectedDestination,
@@ -118,13 +121,13 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
           tripDuration: '9 ساعات كحد أقصى'
         }),
         
-        ...(selectedCategory === 'home_maintenance' && {
+        ...(currentCategory === 'home_maintenance' && {
           issueDescription: formData.serviceDetails,
           urgencyLevel: formData.urgencyLevel,
           preferredTime: formData.appointmentTime
         }),
         
-        ...(selectedCategory === 'internal_delivery' && {
+        ...(currentCategory === 'internal_delivery' && {
           deliveryLocation: formData.address,
           urgentDelivery: formData.urgencyLevel === 'high'
         }),
@@ -243,8 +246,8 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
             </div>
           )}
 
-          {/* إظهار الحقول فقط عند اختيار فئة */}
-          {selectedCategory && (
+          {/* إظهار الحقول دائماً عند وجود خدمة أو اختيار فئة */}
+          {(selectedCategory || service) && (
             <>
               {/* المعلومات الأساسية */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -301,7 +304,7 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
               </div>
 
               {/* حقول خاصة بالمشاوير الخارجية */}
-              {selectedCategory === 'external_trips' && (
+              {(selectedCategory === 'external_trips' || (service && service.category === 'external_trips')) && (
                 <div className="bg-green-500/10 rounded-xl p-4 border border-green-500/30">
                   <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-green-400" />
@@ -385,7 +388,7 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
               )}
 
               {/* حقول خاصة بالصيانة المنزلية */}
-              {selectedCategory === 'home_maintenance' && (
+              {(selectedCategory === 'home_maintenance' || (service && service.category === 'home_maintenance')) && (
                 <div className="bg-orange-500/10 rounded-xl p-4 border border-orange-500/30">
                   <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <Wrench className="w-5 h-5 text-orange-400" />
@@ -420,7 +423,7 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
               )}
 
               {/* عرض السعر للتوصيل الداخلي */}
-              {selectedCategory === 'internal_delivery' && (
+              {(selectedCategory === 'internal_delivery' || (service && service.category === 'internal_delivery')) && (
                 <div className="bg-blue-500/10 rounded-xl p-4 border border-blue-500/30">
                   <div className="flex items-center gap-3">
                     <Truck className="w-6 h-6 text-blue-400" />
@@ -475,7 +478,7 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
             </button>
             <button
               type="submit"
-              disabled={submitting || !selectedCategory}
+              disabled={submitting || (!selectedCategory && !(service && service.category))}
               className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white rounded-lg transition-all duration-200 shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-4 h-4" />

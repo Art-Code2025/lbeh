@@ -60,6 +60,7 @@ const Home: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
         
   // Fetch categories from Firebase/API
   const fetchCategories = async (): Promise<Category[]> => {
@@ -210,6 +211,41 @@ const Home: React.FC = () => {
     };
     return prices[categoryId] || 'حسب الطلب';
   }
+
+  // Handle quick booking
+  const handleQuickBooking = (service?: Service) => {
+    setSelectedService(service || null);
+    setShowBookingModal(true);
+  };
+
+  // Handle quick booking with default service data
+  const handleQuickBookingByCategory = (category: string) => {
+    const defaultService: Service = {
+      id: `quick-${category}`,
+      name: category === 'internal_delivery' ? 'توصيل أغراض داخلي' : 
+            category === 'external_trips' ? 'مشاوير خارجية' : 
+            'صيانة منزلية',
+      category: category,
+      categoryName: category === 'internal_delivery' ? 'توصيل داخلي' : 
+                   category === 'external_trips' ? 'مشاوير خارجية' : 
+                   'صيانة منزلية',
+      homeShortDescription: category === 'internal_delivery' ? 'خدمة توصيل سريعة داخل المدينة' : 
+                           category === 'external_trips' ? 'مشاوير خارجية لخميس مشيط وأبها' : 
+                           'خدمات صيانة منزلية شاملة',
+      price: category === 'internal_delivery' ? '20 ريال' : 
+             category === 'external_trips' ? 'من 250 ريال' : 
+             'حسب المطلوب'
+    };
+    
+    setSelectedService(defaultService);
+    setShowBookingModal(true);
+  };
+
+  // Close booking modal
+  const closeBookingModal = () => {
+    setShowBookingModal(false);
+    setSelectedService(null);
+  };
 
   return (
     <div dir="rtl" className="overflow-x-hidden bg-gradient-to-b from-[#f0faff] to-[#e0f2fe]">
@@ -409,7 +445,13 @@ const Home: React.FC = () => {
               </div>
               <h3 className="text-xl font-bold text-white mb-2">توصيل أغراض داخلي</h3>
               <p className="text-green-100 text-sm mb-4">صيدلية، بقالة، مستشفى، توصيلات أونلاين</p>
-              <div className="text-2xl font-bold text-yellow-300">20 ريال</div>
+              <div className="text-2xl font-bold text-yellow-300 mb-4">20 ريال</div>
+              <button
+                onClick={() => handleQuickBookingByCategory('internal_delivery')}
+                className="w-full px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors border border-white/30"
+              >
+                احجز الآن
+              </button>
             </div>
 
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center hover-lift">
@@ -418,7 +460,13 @@ const Home: React.FC = () => {
               </div>
               <h3 className="text-xl font-bold text-white mb-2">مشاوير خارجية</h3>
               <p className="text-green-100 text-sm mb-4">خميس مشيط، أبها، المطار، المرافق العامة</p>
-              <div className="text-2xl font-bold text-yellow-300">من 250 ريال</div>
+              <div className="text-2xl font-bold text-yellow-300 mb-4">من 250 ريال</div>
+              <button
+                onClick={() => handleQuickBookingByCategory('external_trips')}
+                className="w-full px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors border border-white/30"
+              >
+                احجز الآن
+              </button>
             </div>
 
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center hover-lift">
@@ -427,13 +475,19 @@ const Home: React.FC = () => {
               </div>
               <h3 className="text-xl font-bold text-white mb-2">صيانة منزلية</h3>
               <p className="text-green-100 text-sm mb-4">سباكة، كهرباء، نظافة عامة</p>
-              <div className="text-2xl font-bold text-yellow-300">حسب المطلوب</div>
+              <div className="text-2xl font-bold text-yellow-300 mb-4">حسب المطلوب</div>
+              <button
+                onClick={() => handleQuickBookingByCategory('home_maintenance')}
+                className="w-full px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors border border-white/30"
+              >
+                احجز الآن
+              </button>
             </div>
           </div>
 
           <div className="text-center">
             <button
-              onClick={() => setShowBookingModal(true)}
+              onClick={() => handleQuickBooking()}
               className="inline-flex items-center gap-3 px-12 py-6 bg-white hover:bg-gray-100 text-green-700 rounded-2xl font-bold text-xl transition-all duration-300 shadow-2xl transform hover:scale-105 animate-bounce"
             >
               <Bell className="w-8 h-8" />
@@ -520,12 +574,12 @@ const Home: React.FC = () => {
                     >
                       عرض التفاصيل
                     </Link>
-                    <Link
-                      to={`/book/${service.id}`}
+                    <button
+                      onClick={() => handleQuickBooking(service)}
                       className="flex-1 text-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
                     >
                       احجز الآن
-                    </Link>
+                    </button>
                     </div>
                     </div>
               ))}
@@ -1067,7 +1121,8 @@ const Home: React.FC = () => {
       {/* Booking Modal */}
       <BookingModal
         isOpen={showBookingModal}
-        onClose={() => setShowBookingModal(false)}
+        onClose={closeBookingModal}
+        service={selectedService}
       />
     </div>
   );
