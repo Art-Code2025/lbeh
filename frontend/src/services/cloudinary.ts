@@ -2,9 +2,8 @@ import { toast } from 'react-toastify';
 
 // Cloudinary configuration - Simple and working
 export const CLOUDINARY_CONFIG = {
-  cloudName: "lbeh",
-  uploadPreset: "unsigned_preset",
-  apiKey: "141561647113267"
+  cloudName: "djyduqnzj",
+  uploadPreset: "unsigned_preset"
 };
 
 /**
@@ -31,7 +30,6 @@ export const uploadImageToCloudinary = async (file: File): Promise<string | null
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", CLOUDINARY_CONFIG.uploadPreset);
-    formData.append("api_key", CLOUDINARY_CONFIG.apiKey);
 
     const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`, {
       method: "POST",
