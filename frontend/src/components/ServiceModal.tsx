@@ -57,6 +57,14 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     }
   }, [imagePreview]);
 
+  // مراقبة تغييرات formData.mainImage
+  useEffect(() => {
+    if (formData.mainImage) {
+      console.log('📋 formData.mainImage تم تحديثه:', formData.mainImage);
+      console.log('🔍 هل هو Cloudinary URL؟', isCloudinaryUrl(formData.mainImage));
+    }
+  }, [formData.mainImage]);
+
   useEffect(() => {
     if (editingService) {
       setFormData({
@@ -187,7 +195,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           
           console.log('🎉 Upload successful, optimized URL generated:', optimizedUrl);
           console.log('📋 تم تحديث formData.mainImage:', optimizedUrl);
-          toast.success('🎉 تم رفع الصورة بنجاح!');
+          
+          // تأخير قصير للتأكد من تحديث الحالة
+          setTimeout(() => {
+            console.log('🔄 التحقق النهائي من formData.mainImage:', formData.mainImage);
+            toast.success('🎉 تم رفع الصورة بنجاح!');
+          }, 100);
 
         } else {
           console.error('❌ فشل في رفع الصورة');
@@ -245,6 +258,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // منع الحفظ أثناء رفع الصورة
+    if (uploading) {
+      toast.error('⏳ يرجى انتظار انتهاء رفع الصورة');
+      return;
+    }
+    
     if (!formData.name || !formData.category) {
       toast.error('❌ يرجى ملء جميع الحقول المطلوبة');
       return;
@@ -261,13 +280,15 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       formDataMainImage: formData.mainImage,
       serviceDataMainImage: serviceData.mainImage,
       isCloudinaryPreview: imagePreview ? isCloudinaryUrl(imagePreview) : false,
-      isCloudinaryFormData: formData.mainImage ? isCloudinaryUrl(formData.mainImage) : false
+      isCloudinaryFormData: formData.mainImage ? isCloudinaryUrl(formData.mainImage) : false,
+      uploading: uploading
     });
     
     console.log('💾 حفظ الخدمة مع صور Cloudinary:', {
       mainImage: serviceData.mainImage ? 'Cloudinary URL موجود' : 'لا توجد صورة رئيسية',
       isCloudinaryMainImage: serviceData.mainImage ? isCloudinaryUrl(serviceData.mainImage) : false,
-      featuresCount: serviceData.features.length
+      featuresCount: serviceData.features.length,
+      actualURL: serviceData.mainImage
     });
     
     onSave(serviceData);
@@ -462,6 +483,21 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                   <span className="text-sm text-gray-400">
                     يتم الرفع إلى Cloudinary - الحد الأقصى: 10 ميجابايت
                   </span>
+                  
+                  {/* حالة الصورة */}
+                  {!uploading && formData.mainImage && isCloudinaryUrl(formData.mainImage) && (
+                    <div className="flex items-center gap-2 text-sm text-green-400">
+                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                      <span>✅ الصورة جاهزة للحفظ</span>
+                    </div>
+                  )}
+                  
+                  {uploading && (
+                    <div className="flex items-center gap-2 text-sm text-yellow-400">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>⏳ جاري رفع الصورة...</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Upload Progress */}
