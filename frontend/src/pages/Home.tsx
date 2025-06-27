@@ -21,12 +21,14 @@ import {
   Calendar,
   UserCircle,
   Package,
-  ArrowUpRight
+  ArrowUpRight,
+  Bell
 } from 'lucide-react';
 import { db } from '../firebase.config';
 import { collection, getDocs } from 'firebase/firestore';
 import { categoriesApi, servicesApi } from '../services/servicesApi';
 import { toast } from 'react-hot-toast';
+import BookingModal from '../components/BookingModal';
 
 interface Category {
   id: string;
@@ -57,6 +59,7 @@ const Home: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [showBookingModal, setShowBookingModal] = useState(false);
 
   // Fetch categories from Firebase/API
   const fetchCategories = async (): Promise<Category[]> => {
@@ -257,6 +260,13 @@ const Home: React.FC = () => {
 
               {/* Professional CTA Buttons */}
               <div className="flex flex-wrap gap-4 justify-end pt-6">
+                <button
+                  onClick={() => setShowBookingModal(true)}
+                  className="inline-flex items-center space-x-reverse space-x-3 px-8 py-4 bg-gradient-to-l from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white rounded-xl text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 animate-pulse"
+                >
+                  <Bell className="w-6 h-6" />
+                  <span>احجز الآن - فوري!</span>
+                </button>
                 <Link 
                   to="/categories" 
                   className="inline-flex items-center space-x-reverse space-x-3 px-8 py-4 bg-gradient-to-l from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white rounded-xl text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
@@ -372,6 +382,63 @@ const Home: React.FC = () => {
               <span>عرض جميع الخدمات</span>
               <ArrowRight className="w-5 h-5 transform -rotate-180" />
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Quick Booking Section */}
+      <section className="py-16 bg-gradient-to-r from-green-600 to-blue-700 relative overflow-hidden">
+        {/* Animated Background */}
+        <div className="absolute inset-0">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-white/5 rounded-full blur-2xl animate-float" style={{animationDelay: '2s'}}></div>
+        </div>
+        
+        <div className="container-custom px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-12 scroll-animate opacity-0 translate-y-8">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">حجز سريع وفوري</h2>
+            <p className="text-lg text-green-100 max-w-2xl mx-auto">
+              احجز خدمتك الآن في ثوانٍ معدودة - سنصلك في أسرع وقت!
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center hover-lift">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Truck className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">توصيل أغراض داخلي</h3>
+              <p className="text-green-100 text-sm mb-4">صيدلية، بقالة، مستشفى، توصيلات أونلاين</p>
+              <div className="text-2xl font-bold text-yellow-300">20 ريال</div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center hover-lift">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MapPin className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">مشاوير خارجية</h3>
+              <p className="text-green-100 text-sm mb-4">خميس مشيط، أبها، المطار، المرافق العامة</p>
+              <div className="text-2xl font-bold text-yellow-300">من 250 ريال</div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center hover-lift">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Wrench className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">صيانة منزلية</h3>
+              <p className="text-green-100 text-sm mb-4">سباكة، كهرباء، نظافة عامة</p>
+              <div className="text-2xl font-bold text-yellow-300">حسب المطلوب</div>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <button
+              onClick={() => setShowBookingModal(true)}
+              className="inline-flex items-center gap-3 px-12 py-6 bg-white hover:bg-gray-100 text-green-700 rounded-2xl font-bold text-xl transition-all duration-300 shadow-2xl transform hover:scale-105 animate-bounce"
+            >
+              <Bell className="w-8 h-8" />
+              احجز الآن - خدمة فورية!
+            </button>
           </div>
         </div>
       </section>
@@ -996,6 +1063,12 @@ const Home: React.FC = () => {
           <ArrowRight className="w-6 h-6 transform rotate-90" />
         </button>
       </footer>
+
+      {/* Booking Modal */}
+      <BookingModal
+        isOpen={showBookingModal}
+        onClose={() => setShowBookingModal(false)}
+      />
     </div>
   );
 };
