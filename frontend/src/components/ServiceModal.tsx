@@ -158,21 +158,35 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         setUploadProgress(100);
         
         if (imageUrl) {
-          // تحسين رابط الصورة للعرض المحسن
-          const optimizedUrl = optimizeCloudinaryUrl(imageUrl, {
-            quality: 'auto',
-            format: 'auto'
-          });
+          // DEBUG: Temporarily bypass optimization to check if preview works with raw URL
+          console.log('Got raw URL from Cloudinary, attempting to update UI:', imageUrl);
           
+          setImagePreview(imageUrl);
           setFormData(prev => ({
             ...prev,
-            mainImage: optimizedUrl
+            mainImage: imageUrl
           }));
-          
-          setImagePreview(optimizedUrl);
-          
-          console.log('🎉 تم رفع الصورة بنجاح إلى Cloudinary:', optimizedUrl);
-          toast.success('🎉 تم رفع الصورة بنجاح إلى Cloudinary!');
+
+          toast.success('🎉 الصورة رُفعت! جاري تحديث المعاينة...');
+          console.log('🎉 UI state updated with new image URL.');
+
+          /* 
+            // Original code temporarily disabled for debugging
+            const optimizedUrl = optimizeCloudinaryUrl(imageUrl, {
+              quality: 'auto',
+              format: 'auto'
+            });
+            
+            setFormData(prev => ({
+              ...prev,
+              mainImage: optimizedUrl
+            }));
+            
+            setImagePreview(optimizedUrl);
+            
+            console.log('🎉 تم رفع الصورة بنجاح إلى Cloudinary:', optimizedUrl);
+            toast.success('🎉 تم رفع الصورة بنجاح إلى Cloudinary!');
+          */
         } else {
           console.error('❌ فشل في رفع الصورة');
           toast.error('❌ فشل في رفع الصورة');
