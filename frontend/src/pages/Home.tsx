@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { db } from '../firebase.config';
 import { collection, getDocs } from 'firebase/firestore';
-import { categoriesAPI, servicesAPI } from '../services/api';
+import { categoriesApi, servicesApi } from '../services/servicesApi';
 import { toast } from 'react-hot-toast';
 
 interface Category {
@@ -61,7 +61,7 @@ const Home: React.FC = () => {
   // Fetch categories from Firebase/API
   const fetchCategories = async (): Promise<Category[]> => {
     try {
-      return await categoriesAPI.getAll();
+      return await categoriesApi.getAll();
     } catch (error) {
       console.error('Error fetching categories:', error);
       throw error;
@@ -71,7 +71,7 @@ const Home: React.FC = () => {
   // Fetch services from Firebase/API  
   const fetchServices = async (): Promise<Service[]> => {
     try {
-      const apiServices = await servicesAPI.getAll();
+      const apiServices = await servicesApi.getAll();
       // Transform API services to match our local Service interface
       return apiServices.map(service => ({
         id: service.id.toString(), // Convert number to string

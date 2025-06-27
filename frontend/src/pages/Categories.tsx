@@ -1,30 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Search, Filter, Grid, List, Package, Truck, Wrench, MapPin, Settings } from 'lucide-react';
-import { categoriesAPI, servicesAPI } from '../services/api';
+import { categoriesApi, servicesApi, Category, Service } from '../services/servicesApi';
 import { toast } from 'react-hot-toast';
-
-interface Category {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  color: string;
-  serviceCount?: number;
-}
-
-interface Service {
-  id: string;
-  name: string;
-  category: string;
-  categoryName: string;
-  homeShortDescription: string;
-  mainImage?: string;
-  price?: string;
-  duration?: string;
-  description?: string;
-  features?: string[];
-}
 
 const Categories: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -46,36 +24,16 @@ const Categories: React.FC = () => {
         
         // Fetch both categories and services
         const [categoriesData, servicesData] = await Promise.all([
-          categoriesAPI.getAll(),
-          servicesAPI.getAll()
+          categoriesApi.getAll(),
+          servicesApi.getAll()
         ]);
         
-        // Transform services to match local interface
-        const transformedServices: Service[] = servicesData.map(service => ({
-          id: service.id.toString(),
-          name: service.name,
-          category: service.category,
-          categoryName: service.categoryName,
-          homeShortDescription: service.homeShortDescription,
-          mainImage: service.mainImage,
-          price: service.price,
-          duration: service.duration,
-          description: service.homeShortDescription,
-          features: []
-        }));
-        
-        // Calculate service count for each category
-        const categoriesWithCount = categoriesData.map(category => ({
-          ...category,
-          serviceCount: transformedServices.filter(service => service.category === category.id).length
-        }));
-        
-        setCategories(categoriesWithCount);
-        setServices(transformedServices);
+        setCategories(categoriesData);
+        setServices(servicesData);
         
         console.log('✅ Categories data loaded:', { 
-          categories: categoriesWithCount.length, 
-          services: transformedServices.length 
+          categories: categoriesData.length, 
+          services: servicesData.length 
         });
       } catch (error: any) {
         console.error('❌ Error loading categories data:', error);
@@ -117,25 +75,6 @@ const Categories: React.FC = () => {
     
     setFilteredServices(filtered);
   }, [services, selectedCategory, searchTerm]);
-
-  // Helper functions
-  function getDefaultImage(categoryId: string) {
-    const images: Record<string, string> = {
-      'internal_delivery': 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55?w=500',
-      'external_trips': 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=500',
-      'home_maintenance': 'https://images.unsplash.com/photo-1585128792020-803d29415281?w=500'
-    };
-    return images[categoryId] || 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=500';
-  }
-
-  function getDefaultPrice(categoryId: string) {
-    const prices: Record<string, string> = {
-      'internal_delivery': 'من 20 ريال',
-      'external_trips': 'من 250 ريال',
-      'home_maintenance': 'حسب الخدمة'
-    };
-    return prices[categoryId] || 'حسب الطلب';
-  }
 
   const getIconComponent = (iconName: string) => {
     switch (iconName) {
@@ -219,12 +158,14 @@ const Categories: React.FC = () => {
                   }`}
                 >
                   <div className="flex items-center gap-4 mb-4">
-                    <div className={`p-3 rounded-lg bg-${category.color}-500/20 text-${category.color}-400`}>
-                      {getIconComponent(category.icon)}
+                    <div className="p-3 rounded-lg bg-blue-500/20 text-blue-400">
+                      {category.icon || '📦'}
                     </div>
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-white">{category.name}</h3>
-                      <p className="text-sm text-gray-400">{category.serviceCount} خدمة متاحة</p>
+                      <p className="text-sm text-gray-400">
+                        {services.filter(s => s.category === category.id).length} خدمة متاحة
+                      </p>
                     </div>
                   </div>
                   <p className="text-gray-300 text-sm">{category.description}</p>
@@ -237,7 +178,7 @@ const Categories: React.FC = () => {
         {/* Filters and Search */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
               <button
                 onClick={() => setSelectedCategory('all')}
                 className={`px-4 py-2 rounded-lg transition-colors ${
@@ -271,10 +212,10 @@ const Categories: React.FC = () => {
                   placeholder="البحث في الخدمات..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pr-10 pl-4 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
+                  className="bg-gray-800 border border-gray-700 rounded-lg pl-4 pr-10 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-
+              
               <div className="flex bg-gray-800 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode('grid')}
@@ -394,4 +335,4 @@ const Categories: React.FC = () => {
   );
 };
 
-export default Categories; 
+export default Categories;  
