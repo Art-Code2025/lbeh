@@ -45,6 +45,17 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  // UseEffect to sync the uploaded image URL to the main form data
+  // This solves the stale state issue when saving the form.
+  useEffect(() => {
+    if (imagePreview && isCloudinaryUrl(imagePreview)) {
+      setFormData(prev => ({
+        ...prev,
+        mainImage: imagePreview
+      }));
+    }
+  }, [imagePreview]);
+
   useEffect(() => {
     if (editingService) {
       setFormData({
@@ -158,35 +169,10 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         setUploadProgress(100);
         
         if (imageUrl) {
-          // DEBUG: Temporarily bypass optimization to check if preview works with raw URL
-          console.log('Got raw URL from Cloudinary, attempting to update UI:', imageUrl);
-          
-          setImagePreview(imageUrl);
-          setFormData(prev => ({
-            ...prev,
-            mainImage: imageUrl
-          }));
-
-          toast.success('🎉 الصورة رُفعت! جاري تحديث المعاينة...');
-          console.log('🎉 UI state updated with new image URL.');
-
-          /* 
-            // Original code temporarily disabled for debugging
-            const optimizedUrl = optimizeCloudinaryUrl(imageUrl, {
-              quality: 'auto',
-              format: 'auto'
-            });
-            
-            setFormData(prev => ({
-              ...prev,
-              mainImage: optimizedUrl
-            }));
-            
-            setImagePreview(optimizedUrl);
-            
-            console.log('🎉 تم رفع الصورة بنجاح إلى Cloudinary:', optimizedUrl);
-            toast.success('🎉 تم رفع الصورة بنجاح إلى Cloudinary!');
-          */
+          // The new useEffect will handle syncing this to formData.
+          // This ensures the preview and data are always in sync.
+          setImagePreview(imageUrl); 
+          toast.success('🎉 تم رفع الصورة وجاري تحديث المعاينة');
         } else {
           console.error('❌ فشل في رفع الصورة');
           toast.error('❌ فشل في رفع الصورة');
