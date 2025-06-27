@@ -69,11 +69,30 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     }
   }, [uploadedImageUrl]);
 
+  // مراقبة تغييرات uploadedImageUrl
+  useEffect(() => {
+    console.log('🔒 uploadedImageUrl تغير إلى:', uploadedImageUrl);
+    if (uploadedImageUrl === '') {
+      console.log('⚠️ تحذير: uploadedImageUrl تم مسحه!');
+      console.trace('Stack trace لمعرفة من مسح uploadedImageUrl');
+    }
+  }, [uploadedImageUrl]);
+
+  // مراقبة تغييرات imagePreview
+  useEffect(() => {
+    console.log('🖼️ imagePreview تغير إلى:', imagePreview);
+    if (imagePreview === null && uploadedImageUrl) {
+      console.log('⚠️ تحذير: imagePreview تم مسحه بينما uploadedImageUrl موجود!');
+    }
+  }, [imagePreview]);
+
   // مراقبة تغييرات formData.mainImage
   useEffect(() => {
     if (formData.mainImage) {
       console.log('📋 formData.mainImage تم تحديثه:', formData.mainImage);
       console.log('🔍 هل هو Cloudinary URL؟', isCloudinaryUrl(formData.mainImage));
+    } else {
+      console.log('📋 formData.mainImage تم مسحه');
     }
   }, [formData.mainImage]);
 
@@ -81,8 +100,16 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     // فقط عند فتح Modal جديد أو تغيير الخدمة المراد تعديلها
     if (!isOpen) return; // لا تفعل شيئاً إذا كان Modal مغلق
     
+    console.log('🔄 useEffect triggered - isOpen:', isOpen, 'editingService:', editingService);
+    console.log('🔄 Current state before reset:', {
+      uploadedImageUrl,
+      imagePreview,
+      formDataMainImage: formData.mainImage
+    });
+    
     if (editingService) {
       // تعديل خدمة موجودة
+      console.log('📝 تحميل بيانات خدمة موجودة:', editingService.name);
       setFormData({
         name: editingService.name || '',
         category: editingService.category || '',
@@ -111,8 +138,16 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       const hasUploadedImage = uploadedImageUrl && isCloudinaryUrl(uploadedImageUrl);
       const hasPreviewImage = imagePreview && isCloudinaryUrl(imagePreview);
       
+      console.log('🆕 إضافة خدمة جديدة - فحص الصور:', {
+        hasUploadedImage,
+        hasPreviewImage,
+        uploadedImageUrl,
+        imagePreview
+      });
+      
       if (!hasUploadedImage && !hasPreviewImage) {
         // إعادة تعيين فقط إذا لم تكن هناك صورة مرفوعة
+        console.log('🔄 إعادة تعيين كاملة - لا توجد صور');
         setFormData({
           name: '',
           category: '',
@@ -130,6 +165,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         setUploadedImageUrl('');
       } else {
         // الاحتفاظ بالصورة المرفوعة وإعادة تعيين باقي البيانات فقط
+        const preservedImage = hasUploadedImage ? uploadedImageUrl : (hasPreviewImage ? imagePreview : '');
+        console.log('🔒 الاحتفاظ بالصورة المرفوعة:', preservedImage);
+        
         setFormData(prev => ({
           name: '',
           category: '',
@@ -137,7 +175,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           homeShortDescription: '',
           detailsShortDescription: '',
           description: '',
-          mainImage: hasUploadedImage ? uploadedImageUrl : (hasPreviewImage ? imagePreview : ''),
+          mainImage: preservedImage,
           features: [],
           duration: '',
           availability: '',
@@ -148,7 +186,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           uploadedImageUrl,
           imagePreview,
           hasUploadedImage,
-          hasPreviewImage
+          hasPreviewImage,
+          preservedImage
         });
       }
     }
@@ -323,6 +362,15 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🚀 بداية handleSubmit - فحص الحالة الحالية:', {
+      uploading,
+      uploadedImageUrl,
+      imagePreview,
+      formDataMainImage: formData.mainImage,
+      formDataName: formData.name,
+      formDataCategory: formData.category
+    });
+    
     // منع الحفظ أثناء رفع الصورة
     if (uploading) {
       toast.error('⏳ يرجى انتظار انتهاء رفع الصورة');
@@ -372,7 +420,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       isCloudinaryUploadedUrl: uploadedImageUrl ? isCloudinaryUrl(uploadedImageUrl) : false,
       isCloudinaryPreview: imagePreview ? isCloudinaryUrl(imagePreview) : false,
       isCloudinaryFormData: formData.mainImage ? isCloudinaryUrl(formData.mainImage) : false,
-      uploading: uploading
+      uploading: uploading,
+      serviceDataComplete: serviceData
     });
     
     console.log('💾 حفظ الخدمة مع صور Cloudinary:', {
@@ -390,28 +439,31 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       return;
     }
     
+    // حفظ البيانات
     onSave(serviceData);
     
-    // إعادة تعيين البيانات بعد الحفظ الناجح
-    setFormData({
-      name: '',
-      category: '',
-      categoryName: '',
-      homeShortDescription: '',
-      detailsShortDescription: '',
-      description: '',
-      mainImage: '',
-      features: [],
-      duration: '',
-      availability: '',
-      price: ''
-    });
-    setImagePreview(null);
-    setUploadedImageUrl('');
-    
-    onClose();
-    
-    toast.success('🎉 تم حفظ الخدمة بنجاح!');
+    // تأخير قصير قبل إعادة التعيين لضمان الحفظ
+    setTimeout(() => {
+      // إعادة تعيين البيانات بعد الحفظ الناجح
+      setFormData({
+        name: '',
+        category: '',
+        categoryName: '',
+        homeShortDescription: '',
+        detailsShortDescription: '',
+        description: '',
+        mainImage: '',
+        features: [],
+        duration: '',
+        availability: '',
+        price: ''
+      });
+      setImagePreview(null);
+      setUploadedImageUrl('');
+      
+      onClose();
+      toast.success('🎉 تم حفظ الخدمة بنجاح!');
+    }, 100);
   };
 
   if (!isOpen) return null;
