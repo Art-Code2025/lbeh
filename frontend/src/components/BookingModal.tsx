@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, Phone, User, Clock, Package, Truck, Wrench, Star, Send, DollarSign, AlertCircle } from 'lucide-react';
+import { X, MapPin, Phone, User, Clock, Package, Truck, Wrench, Send, DollarSign, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { createBooking } from '../services/bookingsApi';
 
@@ -9,46 +9,12 @@ interface BookingModalProps {
   service?: any;
 }
 
-// تعريف الخدمات المفصلة حسب الفئات
-const CATEGORY_SERVICES = {
-  internal_delivery: {
-    name: 'خدمة توصيل أغراض داخلي',
-    icon: '🚚',
-    price: '20 ريال',
-    options: [
-      { id: 'pharmacy', name: 'صيدلية', icon: '💊' },
-      { id: 'grocery', name: 'بقالة', icon: '🛒' },
-      { id: 'hospital', name: 'مستشفى', icon: '🏥' },
-      { id: 'online_delivery', name: 'توصيلات أونلاين', icon: '📦' }
-    ]
-  },
-  external_trips: {
-    name: 'مشاوير خارجية',
-    icon: '🗺️',
-    destinations: [
-      { id: 'khamis_mushait', name: 'خميس مشيط', price: 250, duration: '9 ساعات كحد أقصى' },
-      { id: 'abha', name: 'أبها', price: 300, duration: '9 ساعات كحد أقصى' }
-    ]
-  },
-  home_maintenance: {
-    name: 'صيانة منزلية',
-    icon: '🔧',
-    price: 'على حسب المطلوب',
-    options: [
-      { id: 'plumbing', name: 'سباكة', icon: '🚿' },
-      { id: 'electrical', name: 'كهرباء', icon: '⚡' },
-      { id: 'general_cleaning', name: 'نظافة عامة', icon: '🧹' }
-    ]
-  }
-};
-
 function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
   const [formData, setFormData] = useState({
     fullName: '',
     phoneNumber: '',
     address: '',
     serviceDetails: '',
-    selectedOptions: [] as string[],
     selectedDestination: '',
     startLocation: '',
     endLocation: '',
@@ -59,7 +25,6 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
 
   const [submitting, setSubmitting] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [estimatedPrice, setEstimatedPrice] = useState<string>('');
 
   // تحديد فئة الخدمة عند فتح المودال
   useEffect(() => {
@@ -75,7 +40,6 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
         phoneNumber: '',
         address: '',
         serviceDetails: '',
-        selectedOptions: [],
         selectedDestination: '',
         startLocation: '',
         endLocation: '',
@@ -85,40 +49,6 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
       });
     }
   }, [isOpen, service]);
-
-  // حساب السعر المتوقع
-  useEffect(() => {
-    if (selectedCategory === 'internal_delivery') {
-      setEstimatedPrice('20 ريال');
-    } else if (selectedCategory === 'external_trips' && formData.selectedDestination) {
-      const destination = CATEGORY_SERVICES.external_trips.destinations.find(
-        d => d.id === formData.selectedDestination
-      );
-      if (destination) {
-        setEstimatedPrice(`${destination.price} ريال`);
-      }
-    } else if (selectedCategory === 'home_maintenance') {
-      setEstimatedPrice(''); // لا يظهر سعر للصيانة المنزلية
-    } else {
-      setEstimatedPrice('');
-    }
-  }, [selectedCategory, formData.selectedDestination]);
-
-  const handleOptionToggle = (optionId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      selectedOptions: prev.selectedOptions.includes(optionId)
-        ? prev.selectedOptions.filter(id => id !== optionId)
-        : [...prev.selectedOptions, optionId]
-    }));
-  };
-
-  const handleDestinationSelect = (destinationId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      selectedDestination: destinationId
-    }));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,7 +70,7 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
         return;
       }
       if (!formData.startLocation || !formData.endLocation) {
-        toast.error('❌ يرجى تحديد نقطة الانطلاق ونقطة الوصول');
+        toast.error('❌ يرجى تحديد موقع الانطلاق ونقطة الوصول');
         return;
       }
     }
@@ -153,10 +83,24 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
     try {
       setSubmitting(true);
       
+      // تحديد السعر حسب نوع الخدمة
+      let estimatedPrice = '';
+      if (selectedCategory === 'internal_delivery') {
+        estimatedPrice = '20 ريال';
+      } else if (selectedCategory === 'external_trips') {
+        if (formData.selectedDestination === 'khamis_mushait') {
+          estimatedPrice = '250 ريال';
+        } else if (formData.selectedDestination === 'abha') {
+          estimatedPrice = '300 ريال';
+        }
+      } else if (selectedCategory === 'home_maintenance') {
+        estimatedPrice = 'على حسب المطلوب';
+      }
+      
       // تحضير بيانات الحجز
       const bookingData = {
         serviceId: service?.id || 'quick-booking',
-        serviceName: service?.name || CATEGORY_SERVICES[selectedCategory as keyof typeof CATEGORY_SERVICES]?.name || 'حجز سريع',
+        serviceName: service?.name || getServiceName(selectedCategory),
         serviceCategory: selectedCategory,
         fullName: formData.fullName,
         phoneNumber: formData.phoneNumber,
@@ -171,23 +115,20 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
           destination: formData.endLocation,
           selectedDestination: formData.selectedDestination,
           appointmentTime: formData.appointmentTime,
-          tripDuration: CATEGORY_SERVICES.external_trips.destinations.find(d => d.id === formData.selectedDestination)?.duration || ''
+          tripDuration: '9 ساعات كحد أقصى'
         }),
         
         ...(selectedCategory === 'home_maintenance' && {
-          maintenanceType: formData.selectedOptions.join(', '),
           issueDescription: formData.serviceDetails,
           urgencyLevel: formData.urgencyLevel,
           preferredTime: formData.appointmentTime
         }),
         
         ...(selectedCategory === 'internal_delivery' && {
-          deliveryType: formData.selectedOptions.join(', '),
           deliveryLocation: formData.address,
           urgentDelivery: formData.urgencyLevel === 'high'
         }),
 
-        selectedOptions: formData.selectedOptions,
         notes: formData.notes
       };
 
@@ -204,9 +145,16 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
     }
   };
 
-  if (!isOpen) return null;
+  const getServiceName = (category: string) => {
+    switch (category) {
+      case 'internal_delivery': return 'خدمة توصيل أغراض داخلي';
+      case 'external_trips': return 'مشاوير خارجية';
+      case 'home_maintenance': return 'صيانة منزلية';
+      default: return 'حجز سريع';
+    }
+  };
 
-  const categoryConfig = selectedCategory ? CATEGORY_SERVICES[selectedCategory as keyof typeof CATEGORY_SERVICES] : null;
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" dir="rtl">
@@ -225,33 +173,54 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* اختيار نوع الخدمة */}
+          {/* اختيار نوع الخدمة إذا لم تكن محددة */}
           {!service && (
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-300 mb-3">
                 اختر نوع الخدمة *
               </label>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {Object.entries(CATEGORY_SERVICES).map(([key, serviceType]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setSelectedCategory(key)}
-                    className={`p-4 rounded-lg border transition-all duration-200 text-center ${
-                      selectedCategory === key
-                        ? 'border-blue-500 bg-blue-500/20 text-blue-300'
-                        : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
-                    }`}
-                  >
-                    <div className="text-2xl mb-2">{serviceType.icon}</div>
-                    <div className="text-sm font-medium">{serviceType.name}</div>
-                    <div className="text-xs text-gray-400 mt-1">
-                      {key === 'internal_delivery' && (serviceType as any).price}
-                      {key === 'external_trips' && 'من 250 ريال'}
-                      {key === 'home_maintenance' && (serviceType as any).price}
-                    </div>
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('internal_delivery')}
+                  className={`p-4 rounded-lg border transition-all duration-200 text-center ${
+                    selectedCategory === 'internal_delivery'
+                      ? 'border-blue-500 bg-blue-500/20 text-blue-300'
+                      : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
+                  }`}
+                >
+                  <div className="text-2xl mb-2">🚚</div>
+                  <div className="text-sm font-medium">توصيل أغراض داخلي</div>
+                  <div className="text-xs text-gray-400 mt-1">20 ريال</div>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('external_trips')}
+                  className={`p-4 rounded-lg border transition-all duration-200 text-center ${
+                    selectedCategory === 'external_trips'
+                      ? 'border-green-500 bg-green-500/20 text-green-300'
+                      : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
+                  }`}
+                >
+                  <div className="text-2xl mb-2">🗺️</div>
+                  <div className="text-sm font-medium">مشاوير خارجية</div>
+                  <div className="text-xs text-gray-400 mt-1">من 250 ريال</div>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('home_maintenance')}
+                  className={`p-4 rounded-lg border transition-all duration-200 text-center ${
+                    selectedCategory === 'home_maintenance'
+                      ? 'border-orange-500 bg-orange-500/20 text-orange-300'
+                      : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
+                  }`}
+                >
+                  <div className="text-2xl mb-2">🔧</div>
+                  <div className="text-sm font-medium">صيانة منزلية</div>
+                  <div className="text-xs text-gray-400 mt-1">على حسب المطلوب</div>
+                </button>
               </div>
             </div>
           )}
@@ -331,37 +300,7 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
                 </div>
               </div>
 
-              {/* خيارات التوصيل الداخلي */}
-              {selectedCategory === 'internal_delivery' && (
-                <div className="bg-blue-500/10 rounded-xl p-4 border border-blue-500/30">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Truck className="w-5 h-5 text-blue-400" />
-                    اختر نوع التوصيل
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {CATEGORY_SERVICES.internal_delivery.options.map(option => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        onClick={() => handleOptionToggle(option.id)}
-                        className={`p-3 rounded-lg border transition-all duration-200 text-center ${
-                          formData.selectedOptions.includes(option.id)
-                            ? 'border-blue-500 bg-blue-500/20 text-blue-300'
-                            : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
-                        }`}
-                      >
-                        <div className="text-lg mb-1">{option.icon}</div>
-                        <div className="text-xs font-medium">{option.name}</div>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-4 p-3 bg-green-500/20 rounded-lg border border-green-500/30">
-                    <p className="text-green-300 font-bold text-lg">السعر: 20 ريال</p>
-                  </div>
-                </div>
-              )}
-
-              {/* خيارات المشاوير الخارجية */}
+              {/* حقول خاصة بالمشاوير الخارجية */}
               {selectedCategory === 'external_trips' && (
                 <div className="bg-green-500/10 rounded-xl p-4 border border-green-500/30">
                   <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -375,31 +314,46 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
                       اختر الوجهة *
                     </label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {CATEGORY_SERVICES.external_trips.destinations.map(destination => (
-                        <button
-                          key={destination.id}
-                          type="button"
-                          onClick={() => handleDestinationSelect(destination.id)}
-                          className={`p-4 rounded-lg border transition-all duration-200 text-right ${
-                            formData.selectedDestination === destination.id
-                              ? 'border-green-500 bg-green-500/20 text-green-300'
-                              : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div>
-                              <div className="font-semibold text-lg">{destination.name}</div>
-                              <div className="text-xs text-gray-400">{destination.duration}</div>
-                            </div>
-                            <div className="text-yellow-400 font-bold text-xl">{destination.price} ريال</div>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, selectedDestination: 'khamis_mushait' }))}
+                        className={`p-4 rounded-lg border transition-all duration-200 text-right ${
+                          formData.selectedDestination === 'khamis_mushait'
+                            ? 'border-green-500 bg-green-500/20 text-green-300'
+                            : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <div className="font-semibold text-lg">خميس مشيط</div>
+                            <div className="text-xs text-gray-400">9 ساعات كحد أقصى</div>
                           </div>
-                        </button>
-                      ))}
+                          <div className="text-yellow-400 font-bold text-xl">250 ريال</div>
+                        </div>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, selectedDestination: 'abha' }))}
+                        className={`p-4 rounded-lg border transition-all duration-200 text-right ${
+                          formData.selectedDestination === 'abha'
+                            ? 'border-green-500 bg-green-500/20 text-green-300'
+                            : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <div className="font-semibold text-lg">أبها</div>
+                            <div className="text-xs text-gray-400">9 ساعات كحد أقصى</div>
+                          </div>
+                          <div className="text-yellow-400 font-bold text-xl">300 ريال</div>
+                        </div>
+                      </button>
                     </div>
                   </div>
 
                   {/* موقع الانطلاق ونقطة الوصول */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">
                         موقع الانطلاق *
@@ -430,32 +384,14 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
                 </div>
               )}
 
-              {/* خيارات الصيانة المنزلية */}
+              {/* حقول خاصة بالصيانة المنزلية */}
               {selectedCategory === 'home_maintenance' && (
                 <div className="bg-orange-500/10 rounded-xl p-4 border border-orange-500/30">
                   <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <Wrench className="w-5 h-5 text-orange-400" />
-                    نوع الصيانة المطلوبة
+                    وصف المشكلة
                   </h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                    {CATEGORY_SERVICES.home_maintenance.options.map(option => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        onClick={() => handleOptionToggle(option.id)}
-                        className={`p-3 rounded-lg border transition-all duration-200 text-center ${
-                          formData.selectedOptions.includes(option.id)
-                            ? 'border-orange-500 bg-orange-500/20 text-orange-300'
-                            : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
-                        }`}
-                      >
-                        <div className="text-lg mb-1">{option.icon}</div>
-                        <div className="text-sm font-medium">{option.name}</div>
-                      </button>
-                    ))}
-                  </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       وصف المشكلة بالتفصيل *
@@ -473,91 +409,58 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
                       يرجى وصف المشكلة بالتفصيل لتحديد نوع الصيانة والسعر المناسب
                     </p>
                   </div>
+                  
+                  <div className="mt-4 p-3 bg-orange-500/20 rounded-lg border border-orange-500/30">
+                    <p className="text-orange-300 font-bold">السعر: على حسب المطلوب</p>
+                    <p className="text-orange-200 text-sm mt-1">
+                      سيتم تحديد السعر النهائي بعد معاينة العمل المطلوب
+                    </p>
+                  </div>
                 </div>
               )}
 
-              {/* السعر المتوقع - فقط للتوصيل الداخلي والمشاوير الخارجية */}
-              {estimatedPrice && selectedCategory !== 'home_maintenance' && (
-                <div className="bg-green-500/20 border-green-500/30 rounded-xl p-4 border">
+              {/* عرض السعر للتوصيل الداخلي */}
+              {selectedCategory === 'internal_delivery' && (
+                <div className="bg-blue-500/10 rounded-xl p-4 border border-blue-500/30">
                   <div className="flex items-center gap-3">
-                    <DollarSign className="w-6 h-6 text-green-400" />
+                    <Truck className="w-6 h-6 text-blue-400" />
                     <div>
-                      <h4 className="font-semibold text-green-300">السعر</h4>
-                      <p className="text-lg font-bold text-green-200">{estimatedPrice}</p>
-                      {selectedCategory === 'external_trips' && (
-                        <p className="text-green-200 text-sm mt-1">
-                          مدة الرحلة: 9 ساعات كحد أقصى
-                        </p>
-                      )}
+                      <h4 className="font-semibold text-blue-300">خدمة التوصيل الداخلي</h4>
+                      <p className="text-blue-200 font-bold text-lg">السعر: 20 ريال</p>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* رسالة للصيانة المنزلية */}
-              {selectedCategory === 'home_maintenance' && (
-                <div className="bg-orange-500/20 border-orange-500/30 rounded-xl p-4 border">
-                  <div className="flex items-center gap-3">
-                    <AlertCircle className="w-6 h-6 text-orange-400" />
-                    <div>
-                      <h4 className="font-semibold text-orange-300">تحديد السعر</h4>
-                      <p className="text-orange-200">السعر على حسب المطلوب</p>
-                      <p className="text-orange-200 text-sm mt-1">
-                        سيتم تحديد السعر النهائي بعد معاينة العمل المطلوب
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* معلومات إضافية */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    الوقت المفضل
-                  </label>
-                  <div className="relative">
-                    <Clock className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
-                    <input
-                      type="datetime-local"
-                      value={formData.appointmentTime}
-                      onChange={(e) => setFormData(prev => ({ ...prev, appointmentTime: e.target.value }))}
-                      className="w-full pl-4 pr-10 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    مستوى الأولوية
-                  </label>
-                  <select
-                    value={formData.urgencyLevel}
-                    onChange={(e) => setFormData(prev => ({ ...prev, urgencyLevel: e.target.value as any }))}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="low">عادي</option>
-                    <option value="medium">متوسط</option>
-                    <option value="high">عاجل</option>
-                  </select>
+              {/* الوقت المفضل */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  الوقت المفضل
+                </label>
+                <div className="relative">
+                  <Clock className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
+                  <input
+                    type="datetime-local"
+                    value={formData.appointmentTime}
+                    onChange={(e) => setFormData(prev => ({ ...prev, appointmentTime: e.target.value }))}
+                    className="w-full pl-4 pr-10 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
                 </div>
               </div>
 
               {/* ملاحظات إضافية */}
-              {selectedCategory !== 'home_maintenance' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    ملاحظات إضافية
-                  </label>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="أي تفاصيل إضافية أو ملاحظات خاصة..."
-                    rows={2}
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  ملاحظات إضافية
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="أي تفاصيل إضافية أو ملاحظات خاصة..."
+                  rows={2}
+                />
+              </div>
             </>
           )}
 
