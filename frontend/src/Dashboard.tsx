@@ -56,13 +56,15 @@ function Dashboard() {
   // Real-time bookings
   const [newBookingsCount, setNewBookingsCount] = useState(0);
   const [lastBookingUpdate, setLastBookingUpdate] = useState<Date>(new Date());
+  const [lastBookingIds, setLastBookingIds] = useState<Set<string>>(new Set());
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Initialize notification sound
   useEffect(() => {
     audioRef.current = new Audio('/notification.mp3');
-    audioRef.current.volume = 0.8;
+    audioRef.current.volume = 0.6;
+    audioRef.current.preload = 'auto';
     return () => {
       if (audioRef.current) {
         audioRef.current = null;
@@ -96,6 +98,11 @@ function Dashboard() {
       setServices(servicesData);
       setCategories(categoriesData);
       setBookings(bookingsData);
+      
+      // Initialize lastBookingIds with current booking IDs
+      const currentBookingIds = new Set(bookingsData.map(booking => booking.id));
+      setLastBookingIds(currentBookingIds);
+      
       setLastBookingUpdate(new Date());
     } catch (err) {
       console.error('Error loading data:', err);
@@ -110,20 +117,24 @@ function Dashboard() {
     intervalRef.current = setInterval(async () => {
       try {
         const newBookingsData = await fetchBookings();
-        const previousCount = bookings.length;
-        const newCount = newBookingsData.length;
+        const newBookingIds = new Set(newBookingsData.map(booking => booking.id));
         
-        if (newCount > previousCount) {
-          const newBookingsAdded = newCount - previousCount;
-          setNewBookingsCount(prev => prev + newBookingsAdded);
+        // Check for truly new bookings
+        const actualNewBookings = newBookingsData.filter(booking => 
+          !lastBookingIds.has(booking.id)
+        );
+        
+        if (actualNewBookings.length > 0) {
+          setNewBookingsCount(prev => prev + actualNewBookings.length);
           
-          // Play notification sound
+          // Play notification sound only once
           if (audioRef.current) {
+            audioRef.current.currentTime = 0; // Reset audio to start
             audioRef.current.play().catch(e => console.log('Audio play failed:', e));
           }
           
           // Show toast notification
-          toast.success(`🔔 ${newBookingsAdded} حجز جديد!`, {
+          toast.success(`🔔 ${actualNewBookings.length} حجز جديد وصل!`, {
             position: "top-left",
             autoClose: 5000,
             hideProgressBar: false,
@@ -131,6 +142,9 @@ function Dashboard() {
             pauseOnHover: true,
             draggable: true,
           });
+          
+          // Update lastBookingIds
+          setLastBookingIds(newBookingIds);
         }
         
         setBookings(newBookingsData);
@@ -138,7 +152,7 @@ function Dashboard() {
       } catch (error) {
         console.error('Error fetching real-time bookings:', error);
       }
-    }, 3000); // Check every 3 seconds
+    }, 5000); // Check every 5 seconds instead of 3
   };
 
   // Service handlers

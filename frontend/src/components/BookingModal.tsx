@@ -9,8 +9,8 @@ interface BookingModalProps {
   service?: any;
 }
 
-// تعريف الخدمات المفصلة
-const DETAILED_SERVICES = {
+// تعريف الخدمات المفصلة حسب الفئات
+const CATEGORY_SERVICES = {
   internal_delivery: {
     name: 'خدمة توصيل أغراض داخلي',
     icon: '🚚',
@@ -66,32 +66,33 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
   });
 
   const [submitting, setSubmitting] = useState(false);
-  const [selectedServiceType, setSelectedServiceType] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [estimatedPrice, setEstimatedPrice] = useState<string>('');
 
+  // Determine service category
   useEffect(() => {
-    if (service && service.serviceType) {
-      setSelectedServiceType(service.serviceType);
+    if (service && service.category) {
+      setSelectedCategory(service.category);
     }
   }, [service]);
 
   // حساب السعر المتوقع
   useEffect(() => {
-    if (selectedServiceType === 'internal_delivery') {
+    if (selectedCategory === 'internal_delivery') {
       setEstimatedPrice('20 ريال');
-    } else if (selectedServiceType === 'external_trips' && formData.selectedDestination) {
-      const destination = DETAILED_SERVICES.external_trips.destinations.find(
+    } else if (selectedCategory === 'external_trips' && formData.selectedDestination) {
+      const destination = CATEGORY_SERVICES.external_trips.destinations.find(
         d => d.id === formData.selectedDestination
       );
       if (destination) {
         setEstimatedPrice(`${destination.price} ريال`);
       }
-    } else if (selectedServiceType === 'home_maintenance') {
+    } else if (selectedCategory === 'home_maintenance') {
       setEstimatedPrice('سعر متغير - حسب نوع الصيانة');
     } else {
       setEstimatedPrice('');
     }
-  }, [selectedServiceType, formData.selectedDestination]);
+  }, [selectedCategory, formData.selectedDestination]);
 
   const handleOptionToggle = (optionId: string) => {
     setFormData(prev => ({
@@ -118,7 +119,7 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
     }
 
     // التحقق من الحقول المطلوبة حسب نوع الخدمة
-    if (selectedServiceType === 'external_trips') {
+    if (selectedCategory === 'external_trips') {
       if (!formData.selectedDestination) {
         toast.error('❌ يرجى اختيار وجهة للمشوار الخارجي');
         return;
@@ -129,7 +130,7 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
       }
     }
 
-    if (selectedServiceType === 'home_maintenance' && !formData.serviceDetails) {
+    if (selectedCategory === 'home_maintenance' && !formData.serviceDetails) {
       toast.error('❌ يرجى وصف نوع الصيانة المطلوبة');
       return;
     }
@@ -140,8 +141,8 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
       // تحضير بيانات الحجز
       const bookingData = {
         serviceId: service?.id || 'quick-booking',
-        serviceName: service?.name || DETAILED_SERVICES[selectedServiceType as keyof typeof DETAILED_SERVICES]?.name || 'حجز سريع',
-        serviceCategory: service?.category || selectedServiceType,
+        serviceName: service?.name || CATEGORY_SERVICES[selectedCategory as keyof typeof CATEGORY_SERVICES]?.name || 'حجز سريع',
+        serviceCategory: service?.category || selectedCategory,
         fullName: formData.fullName,
         phoneNumber: formData.phoneNumber,
         address: formData.address,
@@ -150,22 +151,22 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
         estimatedPrice: estimatedPrice,
         
         // تفاصيل إضافية حسب نوع الخدمة
-        ...(selectedServiceType === 'external_trips' && {
+        ...(selectedCategory === 'external_trips' && {
           startLocation: formData.startLocation,
           destination: formData.endLocation,
           selectedDestination: formData.selectedDestination,
           appointmentTime: formData.appointmentTime,
-          tripDuration: DETAILED_SERVICES.external_trips.destinations.find(d => d.id === formData.selectedDestination)?.duration || ''
+          tripDuration: CATEGORY_SERVICES.external_trips.destinations.find(d => d.id === formData.selectedDestination)?.duration || ''
         }),
         
-        ...(selectedServiceType === 'home_maintenance' && {
+        ...(selectedCategory === 'home_maintenance' && {
           maintenanceType: formData.selectedOptions.join(', '),
           issueDescription: formData.serviceDetails,
           urgencyLevel: formData.urgencyLevel,
           preferredTime: formData.appointmentTime
         }),
         
-        ...(selectedServiceType === 'internal_delivery' && {
+        ...(selectedCategory === 'internal_delivery' && {
           deliveryType: formData.selectedOptions.join(', '),
           deliveryLocation: formData.address,
           urgentDelivery: formData.urgencyLevel === 'high'
@@ -205,7 +206,7 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
 
   if (!isOpen) return null;
 
-  const serviceConfig = selectedServiceType ? DETAILED_SERVICES[selectedServiceType as keyof typeof DETAILED_SERVICES] : null;
+  const categoryConfig = selectedCategory ? CATEGORY_SERVICES[selectedCategory as keyof typeof CATEGORY_SERVICES] : null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" dir="rtl">
@@ -228,9 +229,9 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
           <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-xl p-4 mb-6 border border-blue-500/30">
             <div className="flex items-center gap-3 mb-2">
               <div className="text-2xl">
-                {service.serviceType === 'internal_delivery' && '🚚'}
-                {service.serviceType === 'external_trips' && '🗺️'}
-                {service.serviceType === 'home_maintenance' && '🔧'}
+                {service.category === 'internal_delivery' && '🚚'}
+                {service.category === 'external_trips' && '🗺️'}
+                {service.category === 'home_maintenance' && '🔧'}
               </div>
               <div>
                 <h3 className="text-white font-bold">{service.name}</h3>
@@ -248,13 +249,13 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
               اختر نوع الخدمة *
             </label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {Object.entries(DETAILED_SERVICES).map(([key, serviceType]) => (
+              {Object.entries(CATEGORY_SERVICES).map(([key, serviceType]) => (
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setSelectedServiceType(key)}
+                  onClick={() => setSelectedCategory(key)}
                   className={`p-3 rounded-lg border transition-all duration-200 text-center ${
-                    selectedServiceType === key
+                    selectedCategory === key
                       ? 'border-blue-500 bg-blue-500/20 text-blue-300'
                       : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
                   }`}
@@ -323,17 +324,17 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
           </div>
 
           {/* خيارات الخدمة */}
-          {serviceConfig && (
+          {categoryConfig && (
             <div className="bg-gray-700/30 rounded-xl p-4 border border-gray-600/50">
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                {selectedServiceType === 'internal_delivery' && <Truck className="w-5 h-5 text-blue-400" />}
-                {selectedServiceType === 'external_trips' && <MapPin className="w-5 h-5 text-green-400" />}
-                {selectedServiceType === 'home_maintenance' && <Wrench className="w-5 h-5 text-orange-400" />}
-                خيارات {serviceConfig.name}
+                {selectedCategory === 'internal_delivery' && <Truck className="w-5 h-5 text-blue-400" />}
+                {selectedCategory === 'external_trips' && <MapPin className="w-5 h-5 text-green-400" />}
+                {selectedCategory === 'home_maintenance' && <Wrench className="w-5 h-5 text-orange-400" />}
+                خيارات {categoryConfig.name}
               </h3>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                {serviceConfig.options.map(option => (
+                {categoryConfig.options.map(option => (
                   <button
                     key={option.id}
                     type="button"
@@ -351,14 +352,14 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
               </div>
 
               {/* خيارات المشاوير الخارجية */}
-              {selectedServiceType === 'external_trips' && 'destinations' in serviceConfig && (
+              {selectedCategory === 'external_trips' && 'destinations' in categoryConfig && (
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       اختر الوجهة *
                     </label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {serviceConfig.destinations.map(destination => (
+                      {categoryConfig.destinations.map(destination => (
                         <button
                           key={destination.id}
                           type="button"
@@ -372,12 +373,9 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
                           <div className="flex items-center justify-between mb-2">
                             <div>
                               <div className="font-semibold text-lg">{destination.name}</div>
-                              <div className="text-xs text-gray-400">{destination.duration}</div>
+                              <div className="text-xs text-gray-400">مدة الرحلة: {destination.duration}</div>
                             </div>
                             <div className="text-yellow-400 font-bold text-xl">{destination.price} ريال</div>
-                          </div>
-                          <div className="text-xs text-gray-400 text-right">
-                            مدة الرحلة: {destination.duration}
                           </div>
                         </button>
                       ))}
@@ -426,26 +424,26 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
           {/* السعر المتوقع */}
           {estimatedPrice && (
             <div className={`rounded-xl p-4 border ${
-              selectedServiceType === 'home_maintenance' 
+              selectedCategory === 'home_maintenance' 
                 ? 'bg-orange-500/20 border-orange-500/30' 
                 : 'bg-green-500/20 border-green-500/30'
             }`}>
               <div className="flex items-center gap-3">
                 <DollarSign className={`w-6 h-6 ${
-                  selectedServiceType === 'home_maintenance' ? 'text-orange-400' : 'text-green-400'
+                  selectedCategory === 'home_maintenance' ? 'text-orange-400' : 'text-green-400'
                 }`} />
                 <div>
                   <h4 className={`font-semibold ${
-                    selectedServiceType === 'home_maintenance' ? 'text-orange-300' : 'text-green-300'
+                    selectedCategory === 'home_maintenance' ? 'text-orange-300' : 'text-green-300'
                   }`}>
                     السعر المتوقع
                   </h4>
                   <p className={`text-lg font-bold ${
-                    selectedServiceType === 'home_maintenance' ? 'text-orange-200' : 'text-green-200'
+                    selectedCategory === 'home_maintenance' ? 'text-orange-200' : 'text-green-200'
                   }`}>
                     {estimatedPrice}
                   </p>
-                  {selectedServiceType === 'home_maintenance' && (
+                  {selectedCategory === 'home_maintenance' && (
                     <p className="text-orange-200 text-sm mt-1">
                       سيتم تحديد السعر النهائي بعد معاينة العمل المطلوب
                     </p>
@@ -490,21 +488,21 @@ function BookingModal({ isOpen, onClose, service }: BookingModalProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              تفاصيل إضافية {selectedServiceType === 'home_maintenance' && '*'}
+              تفاصيل إضافية {selectedCategory === 'home_maintenance' && '*'}
             </label>
             <textarea
               value={formData.serviceDetails}
               onChange={(e) => setFormData(prev => ({ ...prev, serviceDetails: e.target.value }))}
               className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder={
-                selectedServiceType === 'home_maintenance' 
+                selectedCategory === 'home_maintenance' 
                   ? 'وصف مفصل للمشكلة أو نوع الصيانة المطلوبة...' 
                   : 'أي تفاصيل إضافية أو ملاحظات خاصة...'
               }
               rows={3}
-              required={selectedServiceType === 'home_maintenance'}
+              required={selectedCategory === 'home_maintenance'}
             />
-            {selectedServiceType === 'home_maintenance' && (
+            {selectedCategory === 'home_maintenance' && (
               <p className="text-orange-400 text-xs mt-1 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 يرجى وصف المشكلة بالتفصيل لتحديد نوع الصيانة والسعر المناسب
