@@ -71,6 +71,7 @@ import { seedOnlyMissingData, clearAllCollections, seedFirebaseData } from './ut
 import { fixCategoriesStructure, checkDatabaseStructure, completelyResetDatabase } from './utils/fixDatabase';
 import { db } from './firebase.config';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { testFirebaseStorageConnection } from './services/firebaseStorage';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement);
 
@@ -124,8 +125,6 @@ interface Service {
   detailsShortDescription?: string;
   description?: string;
   mainImage?: string;
-  detailedImages?: string[];
-  imageDetails?: string[];
   features?: string[];
   duration?: string;
   availability?: string;
@@ -329,8 +328,6 @@ function Dashboard() {
         detailsShortDescription: service.detailsShortDescription || service.homeShortDescription || '',
         description: service.description || service.homeShortDescription || '',
         mainImage: service.mainImage || '',
-        detailedImages: service.detailedImages || [],
-        imageDetails: service.imageDetails || [],
         features: service.features || [],
         duration: service.duration || '',
         availability: service.availability || '',
@@ -793,29 +790,19 @@ function Dashboard() {
 
   const handleServiceSave = async (serviceData: Service) => {
     try {
-      console.log('💾 Saving service with Cloudinary images:', {
+      console.log('💾 Saving service with Firebase Storage image:', {
         name: serviceData.name,
         mainImage: serviceData.mainImage ? 'Present' : 'Not present',
-        isCloudinaryMainImage: serviceData.mainImage?.includes('cloudinary.com') || false,
-        detailedImagesCount: serviceData.detailedImages?.length || 0,
-        cloudinaryDetailedImages: serviceData.detailedImages?.filter(img => img.includes('cloudinary.com')).length || 0,
-        imageDetailsCount: serviceData.imageDetails?.length || 0,
+        isFirebaseStorageMainImage: serviceData.mainImage?.includes('firebasestorage.googleapis.com') || false,
         features: serviceData.features?.length || 0
       });
 
-      // التأكد من أن الصور من Cloudinary
+      // التأكد من أن الصورة من Firebase Storage
       const mainImageUrl = serviceData.mainImage || '';
-      const detailedImagesUrls = serviceData.detailedImages || [];
       
-      if (mainImageUrl && !mainImageUrl.includes('cloudinary.com') && !mainImageUrl.startsWith('data:')) {
-        console.warn('⚠️ Main image is not from Cloudinary:', mainImageUrl);
+      if (mainImageUrl && !mainImageUrl.includes('firebasestorage.googleapis.com') && !mainImageUrl.startsWith('data:')) {
+        console.warn('⚠️ Main image is not from Firebase Storage:', mainImageUrl);
       }
-
-      detailedImagesUrls.forEach((img, index) => {
-        if (!img.includes('cloudinary.com') && !img.startsWith('data:')) {
-          console.warn(`⚠️ Detailed image ${index + 1} is not from Cloudinary:`, img);
-        }
-      });
 
       const serviceToSave = {
         name: serviceData.name,
@@ -823,48 +810,32 @@ function Dashboard() {
         category: serviceData.category, // Keep for backward compatibility
         categoryName: serviceData.categoryName,
         homeShortDescription: serviceData.homeShortDescription,
-        detailsShortDescription: serviceData.detailsShortDescription || serviceData.homeShortDescription,
-        description: serviceData.description || serviceData.homeShortDescription,
-        mainImage: mainImageUrl,
-        detailedImages: detailedImagesUrls,
-        imageDetails: serviceData.imageDetails || [],
+        detailsShortDescription: serviceData.detailsShortDescription,
+        description: serviceData.description,
+        mainImage: serviceData.mainImage || '',
         features: serviceData.features || [],
-        price: serviceData.price || '',
+        pricing: serviceData.price || '',
         duration: serviceData.duration || '',
         availability: serviceData.availability || '',
-        // إضافة معلومات Cloudinary
-        cloudinaryInfo: {
-          mainImageSource: mainImageUrl ? (mainImageUrl.includes('cloudinary.com') ? 'cloudinary' : 'other') : 'none',
-          detailedImagesSource: detailedImagesUrls.map(img => img.includes('cloudinary.com') ? 'cloudinary' : 'other'),
-          uploadedAt: new Date().toISOString()
-        }
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
-      if (editingService && editingService.id) {
-        // Update existing service - use Firebase document ID
-        console.log('🔄 Updating service with Firebase ID:', editingService.id);
-        await updateDoc(doc(db, 'services', editingService.id), {
-          ...serviceToSave,
-          updatedAt: new Date().toISOString()
-        });
-        console.log('✅ Service updated successfully with Cloudinary images');
-        toast.success('تم تحديث الخدمة بنجاح مع الصور من Cloudinary');
+      if (editingService) {
+        await updateDoc(doc(db, 'services', editingService.id), serviceToSave);
+        setServices(services.map(s => s.id === editingService.id ? { ...serviceToSave, id: editingService.id } : s));
+        toast.success('تم تحديث الخدمة بنجاح');
       } else {
-        // Add new service - let Firebase generate the ID
-        const docRef = await addDoc(collection(db, 'services'), {
-          ...serviceToSave,
-          createdAt: new Date().toISOString()
-        });
-        console.log('✅ New service added with Firebase ID:', docRef.id);
-        toast.success('تم إضافة الخدمة بنجاح مع الصور من Cloudinary');
+        const docRef = await addDoc(collection(db, 'services'), serviceToSave);
+        setServices([...services, { ...serviceToSave, id: docRef.id }]);
+        toast.success('تم إضافة الخدمة بنجاح');
       }
-      
+
       setShowServiceModal(false);
       setEditingService(null);
-      await fetchServices();
-    } catch (error: any) {
-      console.error('❌ Error saving service:', error);
-      toast.error(`فشل في حفظ الخدمة: ${error?.message || 'خطأ غير معروف'}`);
+    } catch (error) {
+      console.error('Error saving service:', error);
+      toast.error('حدث خطأ في حفظ الخدمة');
     }
   };
 
@@ -898,6 +869,25 @@ function Dashboard() {
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+
+  const handleTestFirebaseStorage = async () => {
+    try {
+      setLoading(true);
+      toast.info('🔍 جاري اختبار Firebase Storage...');
+      
+      const isConnected = await testFirebaseStorageConnection();
+      if (isConnected) {
+        toast.success('✅ Firebase Storage يعمل بشكل مثالي!');
+      } else {
+        toast.error('❌ مشكلة في Firebase Storage');
+      }
+    } catch (error) {
+      console.error('Error testing Firebase Storage:', error);
+      toast.error('❌ فشل في اختبار Firebase Storage');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -1038,6 +1028,14 @@ function Dashboard() {
               >
                 <RefreshCw className="w-3 h-3" />
                 إعادة إنشاء البيانات
+              </button>
+              <button
+                onClick={handleTestFirebaseStorage}
+                disabled={loading}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs bg-cyan-500/20 text-cyan-400 rounded-lg hover:bg-cyan-500/30 transition-colors border border-cyan-500/30 disabled:opacity-50"
+              >
+                <Upload className="w-3 h-3" />
+                اختبار رفع الصور
               </button>
             </div>
 
@@ -1310,6 +1308,14 @@ function Dashboard() {
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <Package className="w-12 h-12 text-gray-400" />
+                        </div>
+                      )}
+
+                      {/* Firebase Storage Badge */}
+                      {service.mainImage && service.mainImage.includes('firebasestorage.googleapis.com') && (
+                        <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                          <span>🔥</span>
+                          <span>Firebase</span>
                         </div>
                       )}
                     </div>

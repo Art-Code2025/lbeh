@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, Plus, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { uploadImageToCloudinary, uploadMultipleImagesToCloudinary } from '../services/cloudinary';
+import { uploadImageToFirebase, isFirebaseStorageUrl, testFirebaseStorageConnection } from '../services/firebaseStorage';
 
 interface ServiceModalProps {
   isOpen: boolean;
@@ -26,8 +26,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     detailsShortDescription: '',
     description: '',
     mainImage: '',
-    detailedImages: [] as string[],
-    imageDetails: [] as string[],
     features: [] as string[],
     duration: '',
     availability: '',
@@ -36,7 +34,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
 
   const [newFeature, setNewFeature] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [uploadingDetailed, setUploadingDetailed] = useState(false);
+  const [connectionTested, setConnectionTested] = useState(false);
 
   useEffect(() => {
     if (editingService) {
@@ -48,8 +46,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         detailsShortDescription: editingService.detailsShortDescription || editingService.homeShortDescription || '',
         description: editingService.description || editingService.homeShortDescription || '',
         mainImage: editingService.mainImage || '',
-        detailedImages: editingService.detailedImages || [],
-        imageDetails: editingService.imageDetails || [],
         features: editingService.features || [],
         duration: editingService.duration || '',
         availability: editingService.availability || '',
@@ -65,8 +61,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         detailsShortDescription: '',
         description: '',
         mainImage: '',
-        detailedImages: [],
-        imageDetails: [],
         features: [],
         duration: '',
         availability: '',
@@ -74,6 +68,31 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       });
     }
   }, [editingService, isOpen]);
+
+  // اختبار الاتصال عند فتح Modal
+  useEffect(() => {
+    if (isOpen && !connectionTested) {
+      testConnection();
+    }
+  }, [isOpen]);
+
+  const testConnection = async () => {
+    try {
+      console.log('🔍 اختبار اتصال Firebase Storage...');
+      const isConnected = await testFirebaseStorageConnection();
+      if (isConnected) {
+        console.log('✅ Firebase Storage جاهز للاستخدام');
+        toast.success('Firebase Storage جاهز ومتصل');
+      } else {
+        console.error('❌ فشل في الاتصال بـ Firebase Storage');
+        toast.error('مشكلة في الاتصال بـ Firebase Storage');
+      }
+      setConnectionTested(true);
+    } catch (error) {
+      console.error('❌ خطأ في اختبار الاتصال:', error);
+      toast.error('خطأ في اختبار الاتصال');
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -88,60 +107,33 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
+      console.log('📤 بداية رفع الصورة:', {
+        name: file.name,
+        size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+        type: file.type
+      });
+      
       setUploading(true);
       try {
-        const imageUrl = await uploadImageToCloudinary(file);
+        const imageUrl = await uploadImageToFirebase(file);
         if (imageUrl) {
           setFormData(prev => ({
             ...prev,
             mainImage: imageUrl
           }));
-          toast.success('تم رفع الصورة الرئيسية بنجاح إلى Cloudinary');
+          console.log('🎉 تم رفع الصورة بنجاح:', imageUrl);
+          toast.success('تم رفع الصورة الرئيسية بنجاح');
+        } else {
+          console.error('❌ فشل في رفع الصورة');
+          toast.error('فشل في رفع الصورة');
         }
       } catch (error) {
-        console.error('Error uploading main image:', error);
+        console.error('❌ خطأ في رفع الصورة:', error);
         toast.error('فشل في رفع الصورة الرئيسية');
       } finally {
         setUploading(false);
       }
     }
-  };
-
-  const handleDetailedImagesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files);
-      
-      // التحقق من العدد الإجمالي
-      if (formData.detailedImages.length + files.length > 10) {
-        toast.error('يمكن إضافة 10 صور تفصيلية كحد أقصى');
-        return;
-      }
-      
-      setUploadingDetailed(true);
-      try {
-        const imageUrls = await uploadMultipleImagesToCloudinary(files);
-        if (imageUrls.length > 0) {
-          setFormData(prev => ({
-            ...prev,
-            detailedImages: [...prev.detailedImages, ...imageUrls]
-          }));
-          toast.success(`تم رفع ${imageUrls.length} صورة تفصيلية بنجاح إلى Cloudinary`);
-        }
-      } catch (error) {
-        console.error('Error uploading detailed images:', error);
-        toast.error('فشل في رفع الصور التفصيلية');
-      } finally {
-        setUploadingDetailed(false);
-      }
-    }
-  };
-
-  const handleRemoveDetailedImage = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      detailedImages: prev.detailedImages.filter((_, i) => i !== index)
-    }));
-    toast.success('تم حذف الصورة');
   };
 
   const handleAddFeature = () => {
@@ -169,18 +161,14 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       return;
     }
     
-    // التأكد من أن الصور محفوظة في Cloudinary
+    // التأكد من أن الصور محفوظة في Firebase Storage
     const serviceData = {
       ...formData,
       mainImage: formData.mainImage || '',
-      detailedImages: formData.detailedImages || [],
-      imageDetails: formData.imageDetails || []
     };
     
-    console.log('💾 Saving service with Cloudinary images:', {
-      mainImage: serviceData.mainImage ? 'Cloudinary URL present' : 'No main image',
-      detailedImagesCount: serviceData.detailedImages.length,
-      cloudinaryUrls: serviceData.detailedImages.some(img => img.includes('cloudinary.com'))
+    console.log('💾 Saving service with Firebase Storage images:', {
+      mainImage: serviceData.mainImage ? 'Firebase Storage URL present' : 'No main image',
     });
     
     onSave(serviceData);
@@ -356,7 +344,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                       </>
                     )}
                   </label>
-                  <span className="text-sm text-gray-400">يتم الرفع إلى Cloudinary - الحد الأقصى: 10 ميجابايت</span>
+                  <span className="text-sm text-gray-400">يتم الرفع إلى Firebase Storage - الحد الأقصى: 10 ميجابايت</span>
                 </div>
                 {formData.mainImage && (
                   <div className="relative inline-block">
@@ -373,79 +361,11 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                     >
                       <X className="w-4 h-4" />
                     </button>
-                    {formData.mainImage.includes('cloudinary.com') && (
+                    {formData.mainImage.includes('firebase.storage') && (
                       <div className="absolute -bottom-2 -left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-                        ☁️ Cloudinary
+                        ☁️ Firebase Storage
                       </div>
                     )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                صور تفصيلية (اختياري)
-              </label>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-4">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleDetailedImagesChange}
-                    className="hidden"
-                    id="detailedImages"
-                    disabled={uploadingDetailed}
-                  />
-                  <label
-                    htmlFor="detailedImages"
-                    className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg cursor-pointer transition-colors ${
-                      uploadingDetailed 
-                        ? 'bg-gray-500 cursor-not-allowed' 
-                        : 'bg-gray-600 hover:bg-gray-500'
-                    }`}
-                  >
-                    {uploadingDetailed ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        جاري الرفع...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-4 h-4" />
-                        إضافة صور تفصيلية
-                      </>
-                    )}
-                  </label>
-                  <span className="text-sm text-gray-400">
-                    {formData.detailedImages.length}/10 صور - Cloudinary
-                  </span>
-                </div>
-                {formData.detailedImages.length > 0 && (
-                  <div className="grid grid-cols-4 gap-3">
-                    {formData.detailedImages.map((image, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={image}
-                          alt={`صورة تفصيلية ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg border border-gray-600"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveDetailedImage(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                          disabled={uploadingDetailed}
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                        {image.includes('cloudinary.com') && (
-                          <div className="absolute -bottom-1 -left-1 bg-green-500 text-white text-xs px-1 py-0.5 rounded">
-                            ☁️
-                          </div>
-                        )}
-                      </div>
-                    ))}
                   </div>
                 )}
               </div>
