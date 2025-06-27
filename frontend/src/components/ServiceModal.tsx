@@ -169,10 +169,18 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         setUploadProgress(100);
         
         if (imageUrl) {
-          // The new useEffect will handle syncing this to formData.
-          // This ensures the preview and data are always in sync.
-          setImagePreview(imageUrl); 
-          toast.success('🎉 تم رفع الصورة وجاري تحديث المعاينة');
+          // Re-enable optimization and set the preview directly.
+          // The useEffect hook will handle syncing the final, optimized URL to formData.
+          const optimizedUrl = optimizeCloudinaryUrl(imageUrl, {
+            quality: 'auto',
+            format: 'auto'
+          });
+
+          setImagePreview(optimizedUrl);
+          
+          console.log('🎉 Upload successful, optimized URL generated:', optimizedUrl);
+          toast.success('🎉 تم رفع الصورة بنجاح!');
+
         } else {
           console.error('❌ فشل في رفع الصورة');
           toast.error('❌ فشل في رفع الصورة');
