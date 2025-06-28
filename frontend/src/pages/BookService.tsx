@@ -304,9 +304,8 @@ const BookService: React.FC = () => {
           urgencyLevel: formData.urgencyLevel,
           preferredTime: formData.preferredTime
         }),
-        ...(service.category === 'home_maintenance' && {
-          customAnswers: formData.customAnswers
-        })
+        // إجابات الأسئلة المخصَّصة (لجميع الفئات إن وُجدت)
+        customAnswers: formData.customAnswers
       };
 
       const result = await createBooking(bookingData);

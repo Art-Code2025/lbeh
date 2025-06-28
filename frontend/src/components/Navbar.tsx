@@ -68,12 +68,11 @@ const Navbar: React.FC = () => {
           <Link to="/" className="flex items-center space-x-reverse space-x-4 group">
             <img
               src="/logo.png"
-              alt="لبيه لوجو"
-              className="w-12 h-12 rounded-xl shadow-lg transform transition-transform duration-300 group-hover:scale-105 group-hover:shadow-xl object-cover"
+              alt="شعار لبيه"
+              className="w-16 h-16 rounded-2xl shadow-lg transform transition-transform duration-300 group-hover:scale-105 group-hover:shadow-xl object-contain"
             />
             <div className="flex flex-col">
               <span className="text-3xl lg:text-4xl font-bold bg-gradient-to-l from-cyan-600 to-blue-700 bg-clip-text text-transparent">لبيه</span>
-              <span className="text-xs text-slate-500 -mt-1 font-medium">خدمات متميزة</span>
             </div>
             {servicesCount > 0 && (
               <div className="hidden sm:flex items-center gap-2 bg-white/70 backdrop-blur-sm text-cyan-700 text-sm px-4 py-2 rounded-full shadow-sm border border-cyan-100">
