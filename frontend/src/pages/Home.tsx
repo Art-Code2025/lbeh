@@ -22,7 +22,12 @@ import {
   UserCircle,
   Package,
   ArrowUpRight,
-  Bell
+  Bell,
+  FileText,
+  AlertCircle,
+  Send,
+  Loader2,
+  ChevronRight
 } from 'lucide-react';
 import { db } from '../firebase.config';
 import { collection, getDocs } from 'firebase/firestore';
@@ -33,10 +38,19 @@ import BookingModal from '../components/BookingModal';
 interface Category {
   id: string;
   name: string;
-  description: string;
-  icon: string;
-  color: string;
+  description?: string;
+  icon?: string;
+  color?: string;
   createdAt?: string;
+}
+
+interface CustomQuestion {
+  id: string;
+  question: string;
+  type: 'text' | 'number' | 'select_single' | 'select_multiple' | 'date' | 'file';
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
 }
 
 interface Service {
@@ -52,6 +66,7 @@ interface Service {
   features?: string[];
   detailedImages?: string[];
   availability?: string;
+  customQuestions?: CustomQuestion[];
 }
 
 const Home: React.FC = () => {
@@ -78,18 +93,19 @@ const Home: React.FC = () => {
       const apiServices = await servicesApi.getAll();
       // Transform API services to match our local Service interface
       return apiServices.map(service => ({
-        id: service.id.toString(), // Convert number to string
+        id: service.id || '',
         name: service.name,
-        category: service.category,
-        categoryName: service.categoryName,
-        homeShortDescription: service.homeShortDescription,
+        category: service.category || '',
+        categoryName: service.categoryName || '',
+        homeShortDescription: service.homeShortDescription || '',
         mainImage: service.mainImage,
         price: service.price,
         duration: service.duration,
-        description: service.homeShortDescription,
+        description: service.homeShortDescription || '',
         features: [],
         detailedImages: [],
-        availability: '24/7'
+        availability: '24/7',
+        customQuestions: service.customQuestions || []
       }));
     } catch (error) {
       console.error('Error fetching services:', error);
@@ -225,7 +241,7 @@ const Home: React.FC = () => {
       name: category === 'internal_delivery' ? 'توصيل أغراض داخلي' : 
             category === 'external_trips' ? 'مشاوير خارجية' : 
             'صيانة منزلية',
-      category: category,
+      category: category || '',
       categoryName: category === 'internal_delivery' ? 'توصيل داخلي' : 
                    category === 'external_trips' ? 'مشاوير خارجية' : 
                    'صيانة منزلية',
@@ -234,7 +250,8 @@ const Home: React.FC = () => {
                            'خدمات صيانة منزلية شاملة',
       price: category === 'internal_delivery' ? '20 ريال' : 
              category === 'external_trips' ? 'من 250 ريال' : 
-             'حسب المطلوب'
+             'حسب المطلوب',
+      customQuestions: []
     };
     
     setSelectedService(defaultService);
@@ -296,13 +313,6 @@ const Home: React.FC = () => {
 
               {/* Professional CTA Buttons */}
               <div className="flex flex-wrap gap-4 justify-end pt-6">
-                <button
-                  onClick={() => setShowBookingModal(true)}
-                  className="inline-flex items-center space-x-reverse space-x-3 px-8 py-4 bg-gradient-to-l from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white rounded-xl text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 animate-pulse"
-                >
-                  <Bell className="w-6 h-6" />
-                  <span>احجز الآن - فوري!</span>
-                </button>
                 <Link 
                   to="/categories" 
                   className="inline-flex items-center space-x-reverse space-x-3 px-8 py-4 bg-gradient-to-l from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white rounded-xl text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
@@ -547,7 +557,7 @@ const Home: React.FC = () => {
                           {service.category === 'internal_delivery' && '🚚'}
                           {service.category === 'external_trips' && '🗺️'}
                           {service.category === 'home_maintenance' && '🔧'}
-                          {!['internal_delivery', 'external_trips', 'home_maintenance'].includes(service.category) && '⚙️'}
+                          {!['internal_delivery', 'external_trips', 'home_maintenance'].includes(service.category || '') && '⚙️'}
                         </div>
                       </div>
                     )}

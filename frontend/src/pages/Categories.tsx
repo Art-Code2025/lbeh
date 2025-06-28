@@ -68,8 +68,8 @@ const Categories: React.FC = () => {
     if (searchTerm) {
       filtered = filtered.filter(service =>
         service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.homeShortDescription.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.categoryName.toLowerCase().includes(searchTerm.toLowerCase())
+        (service.homeShortDescription ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (service.categoryName ?? '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     
@@ -89,16 +89,16 @@ const Categories: React.FC = () => {
     }
   };
 
-  const getImageSrc = (image: string) => {
-    return image;
+  const getImageSrc = (image?: string) => {
+    return image || '';
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-300 text-lg">جاري تحميل الفئات والخدمات...</p>
+          <p className="text-gray-800 text-lg">جاري تحميل الفئات والخدمات...</p>
         </div>
       </div>
     );
@@ -106,7 +106,7 @@ const Categories: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="bg-gray-800 rounded-xl p-8 max-w-md mx-auto text-center">
           <p className="text-red-400 text-lg mb-4">⚠️ {error}</p>
           <button 
@@ -121,7 +121,7 @@ const Categories: React.FC = () => {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gray-900 text-white">
+    <div dir="rtl" className="min-h-screen bg-white text-gray-800">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 py-20">
         <div className="max-w-6xl mx-auto px-4 text-center">
@@ -133,7 +133,7 @@ const Categories: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4 py-12">
         {/* Categories Grid */}
         <div className="mb-12">
-          <h2 className="text-3xl font-bold text-white mb-8">الفئات المتاحة</h2>
+          <h2 className="text-3xl font-bold text-gray-800 mb-8">الفئات المتاحة</h2>
           {categories.length === 0 ? (
             <div className="text-center py-12">
               <Package className="w-16 h-16 text-gray-600 mx-auto mb-4" />
@@ -153,22 +153,22 @@ const Categories: React.FC = () => {
                   onClick={() => setSelectedCategory(category.id)}
                   className={`p-6 rounded-2xl border-2 transition-all duration-300 text-right ${
                     selectedCategory === category.id
-                      ? 'border-blue-500 bg-blue-500/20'
-                      : 'border-gray-700 bg-gray-800 hover:border-gray-600 hover:bg-gray-700'
+                      ? 'border-cyan-500 bg-cyan-50'
+                      : 'border-gray-200 bg-white hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="p-3 rounded-lg bg-blue-500/20 text-blue-400">
+                    <div className="p-3 rounded-lg bg-cyan-100 text-cyan-600">
                       {category.icon || '📦'}
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white">{category.name}</h3>
-                      <p className="text-sm text-gray-400">
+                      <h3 className="text-xl font-bold text-gray-900">{category.name}</h3>
+                      <p className="text-sm text-gray-500">
                         {services.filter(s => s.category === category.id).length} خدمة متاحة
                       </p>
                     </div>
                   </div>
-                  <p className="text-gray-300 text-sm">{category.description}</p>
+                  <p className="text-gray-600 text-sm">{category.description}</p>
                 </button>
               ))}
             </div>
@@ -183,8 +183,8 @@ const Categories: React.FC = () => {
                 onClick={() => setSelectedCategory('all')}
                 className={`px-4 py-2 rounded-lg transition-colors ${
                   selectedCategory === 'all'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    ? 'bg-cyan-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 جميع الخدمات
@@ -195,8 +195,8 @@ const Categories: React.FC = () => {
                   onClick={() => setSelectedCategory(category.id)}
                   className={`px-4 py-2 rounded-lg transition-colors ${
                     selectedCategory === category.id
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      ? 'bg-cyan-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   {category.name}
@@ -212,20 +212,20 @@ const Categories: React.FC = () => {
                   placeholder="البحث في الخدمات..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg pl-4 pr-10 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="bg-gray-100 border border-gray-300 rounded-lg pl-4 pr-10 py-2 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                 />
               </div>
               
-              <div className="flex bg-gray-800 rounded-lg p-1">
+              <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded ${viewMode === 'grid' ? 'bg-blue-500 text-white' : 'text-gray-400'}`}
+                  className={`p-2 rounded ${viewMode === 'grid' ? 'bg-cyan-500 text-white' : 'text-gray-500'}`}
                 >
                   <Grid className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-2 rounded ${viewMode === 'list' ? 'bg-blue-500 text-white' : 'text-gray-400'}`}
+                  className={`p-2 rounded ${viewMode === 'list' ? 'bg-cyan-500 text-white' : 'text-gray-500'}`}
                 >
                   <List className="w-5 h-5" />
                 </button>
@@ -237,7 +237,7 @@ const Categories: React.FC = () => {
         {/* Services Display */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white">
+            <h2 className="text-2xl font-bold text-gray-800">
               {selectedCategory === 'all' 
                 ? `جميع الخدمات (${filteredServices.length})`
                 : `${categories.find(c => c.id === selectedCategory)?.name} (${filteredServices.length})`
@@ -259,7 +259,7 @@ const Categories: React.FC = () => {
               {selectedCategory !== 'all' && (
                 <button
                   onClick={() => setSelectedCategory('all')}
-                  className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                  className="px-6 py-3 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors"
                 >
                   عرض جميع الخدمات
                 </button>
@@ -271,15 +271,15 @@ const Categories: React.FC = () => {
               : 'space-y-6'
             }>
               {filteredServices.map((service) => (
-                <div key={service.id} className={`bg-gray-800 rounded-2xl p-6 hover:bg-gray-700 transition-all duration-300 ${
+                <div key={service.id} className={`bg-white border border-gray-200 rounded-2xl p-6 hover:bg-gray-50 transition-all duration-300 ${
                   viewMode === 'list' ? 'flex gap-6' : ''
                 }`}>
-                  <div className={`relative rounded-xl overflow-hidden bg-gray-700 ${
+                  <div className={`relative rounded-xl overflow-hidden bg-gray-100 ${
                     viewMode === 'list' ? 'w-48 h-32 flex-shrink-0' : 'h-48 mb-6'
                   }`}>
                     {service.mainImage ? (
                       <img
-                        src={getImageSrc(service.mainImage)}
+                        src={getImageSrc(service.mainImage ?? '')}
                         alt={service.name}
                         className="w-full h-full object-cover"
                       />
@@ -289,19 +289,19 @@ const Categories: React.FC = () => {
                           {service.category === 'internal_delivery' && '🚚'}
                           {service.category === 'external_trips' && '🗺️'}
                           {service.category === 'home_maintenance' && '🔧'}
-                          {!['internal_delivery', 'external_trips', 'home_maintenance'].includes(service.category) && '⚙️'}
+                          {!['internal_delivery', 'external_trips', 'home_maintenance'].includes(service.category || '') && '⚙️'}
                         </div>
                       </div>
                     )}
                   </div>
                   
                   <div className="flex-1">
-                    <h3 className="text-xl font-bold text-white mb-3">{service.name}</h3>
-                    <p className="text-gray-300 mb-4 line-clamp-2">{service.homeShortDescription}</p>
+                    <h3 className="text-xl font-bold text-gray-900 mb-3">{service.name}</h3>
+                    <p className="text-gray-600 mb-4 line-clamp-2">{service.homeShortDescription ?? ''}</p>
                     
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-sm font-medium text-blue-400 bg-blue-500/20 px-3 py-1 rounded-full">
-                        {service.categoryName}
+                      <span className="text-sm font-medium text-cyan-700 bg-cyan-100 px-3 py-1 rounded-full">
+                        {service.categoryName ?? ''}
                       </span>
                       {service.price && (
                         <span className="text-yellow-400 font-bold">
@@ -313,7 +313,7 @@ const Categories: React.FC = () => {
                     <div className="flex gap-3">
                       <Link
                         to={`/services/${service.id}`}
-                        className="flex-1 text-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                        className="flex-1 text-center px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors"
                       >
                         عرض التفاصيل
                       </Link>

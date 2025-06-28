@@ -30,12 +30,17 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     mainImage: '',
     features: [] as string[],
     price: '',
+    expectedDuration: '',
     customQuestions: [] as CustomQuestion[]
   });
 
   // UI state
   const [uploading, setUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Pricing option state
+  const [priceOption, setPriceOption] = useState<'fixed' | 'on_demand' | 'trips'>('on_demand');
+  const [tripPrices, setTripPrices] = useState({ khamis: '250', abha: '300' });
 
   // Custom question type
   interface CustomQuestion {
@@ -62,9 +67,22 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           mainImage: editingService.mainImage || '',
           features: editingService.features || [],
           price: editingService.price || '',
+          expectedDuration: editingService.expectedDuration || '',
           customQuestions: editingService.customQuestions || []
         });
         setImagePreview(editingService.mainImage || null);
+        if (editingService.price === 'حسب الطلب') {
+          setPriceOption('on_demand');
+        } else if (editingService.price?.includes('خميس')) {
+          setPriceOption('trips');
+          const parts = editingService.price.split('|');
+          setTripPrices({
+            khamis: parts[0]?.match(/(\d+)/)?.[0] || '250',
+            abha: parts[1]?.match(/(\d+)/)?.[0] || '300'
+          });
+        } else {
+          setPriceOption('fixed');
+        }
       } else {
         // Reset for new service
         setFormData({
@@ -77,9 +95,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           mainImage: '',
           features: [],
           price: '',
+          expectedDuration: '',
           customQuestions: []
         });
         setImagePreview(null);
+        setPriceOption('on_demand');
+        setTripPrices({ khamis: '250', abha: '300' });
       }
     }
   }, [isOpen, editingService]);
@@ -94,26 +115,10 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    // Set automatic price based on category
-    let autoPrice = '';
-    if (name === 'category') {
-      const selectedCategory = categories.find(c => c.id === value);
-      if (selectedCategory) {
-        if (value === 'internal_delivery') {
-          autoPrice = '20 ريال';
-        } else if (value === 'external_trips') {
-          autoPrice = 'خميس مشيط: 250 ريال | أبها: 300 ريال';
-        } else if (value === 'home_maintenance') {
-          autoPrice = 'على حسب المطلوب';
-        }
-      }
-    }
-    
     setFormData(prev => ({
       ...prev,
       [name]: value,
-      categoryName: name === 'category' ? categories.find(c => c.id === value)?.name || '' : prev.categoryName,
-      price: name === 'category' ? autoPrice : prev.price
+      categoryName: name === 'category' ? categories.find(c => c.id === value)?.name || '' : prev.categoryName
     }));
   };
 
@@ -224,8 +229,16 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       return;
     }
 
+    let finalPrice = formData.price;
+    if (priceOption === 'trips') {
+      finalPrice = `خميس مشيط ${tripPrices.khamis} ريال | أبها ${tripPrices.abha} ريال`;
+    } else if (priceOption === 'on_demand') {
+      finalPrice = 'حسب الطلب';
+    }
+
     const serviceData = {
       ...formData,
+      price: finalPrice,
       isCloudinaryMainImage: !!formData.mainImage && formData.mainImage.includes('cloudinary'),
       customQuestions: formData.customQuestions
     };
@@ -325,27 +338,90 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             />
           </div>
 
-          {/* السعر - يتم تعيينه تلقائياً */}
+          {/* السعر */}
           <div>
-            <label htmlFor="price" className="block text-sm font-medium text-gray-300 mb-2">
-              السعر
-            </label>
-            <div className="relative">
-              <DollarSign className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
-              <input
-                id="price"
-                type="text"
-                name="price"
-                value={formData.price}
-                onChange={handleInputChange}
-                className="w-full pl-4 pr-10 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
-                placeholder="سيتم تعيين السعر تلقائياً حسب الفئة"
-                readOnly
-              />
+            <label className="block text-sm font-medium text-gray-300 mb-2">السعر</label>
+            <div className="space-y-3 bg-gray-700/40 p-4 rounded-lg border border-gray-600">
+              <label className="flex items-center gap-2 text-gray-200 text-sm">
+                <input
+                  type="radio"
+                  name="priceOption"
+                  value="fixed"
+                  checked={priceOption === 'fixed'}
+                  onChange={() => setPriceOption('fixed')}
+                />
+                سعر ثابت
+              </label>
+              {priceOption === 'fixed' && (
+                <input
+                  type="text"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                  className="mt-2 w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                  placeholder="مثال: 150 ريال"
+                />
+              )}
+
+              <label className="flex items-center gap-2 text-gray-200 text-sm">
+                <input
+                  type="radio"
+                  name="priceOption"
+                  value="on_demand"
+                  checked={priceOption === 'on_demand'}
+                  onChange={() => {
+                    setPriceOption('on_demand');
+                    setFormData(prev => ({ ...prev, price: 'حسب الطلب' }));
+                  }}
+                />
+                على حسب الطلب
+              </label>
+
+              <label className="flex items-center gap-2 text-gray-200 text-sm">
+                <input
+                  type="radio"
+                  name="priceOption"
+                  value="trips"
+                  checked={priceOption === 'trips'}
+                  onChange={() => setPriceOption('trips')}
+                />
+                مشاوير خارجية (خميس مشيط / أبها)
+              </label>
+              {priceOption === 'trips' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                  <input
+                    type="text"
+                    value={tripPrices.khamis}
+                    onChange={e => setTripPrices(p => ({ ...p, khamis: e.target.value }))}
+                    className="px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                    placeholder="خميس مشيط (ريال)"
+                  />
+                  <input
+                    type="text"
+                    value={tripPrices.abha}
+                    onChange={e => setTripPrices(p => ({ ...p, abha: e.target.value }))}
+                    className="px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                    placeholder="أبها (ريال)"
+                  />
+                </div>
+              )}
             </div>
-            <p className="text-gray-400 text-xs mt-1">
-              يتم تحديد السعر تلقائياً حسب فئة الخدمة المختارة
-            </p>
+          </div>
+
+          {/* المدة المتوقعة - اختياري */}
+          <div>
+            <label htmlFor="expectedDuration" className="block text-sm font-medium text-gray-300 mb-2">
+              المدة المتوقعة (اختياري)
+            </label>
+            <input
+              id="expectedDuration"
+              type="text"
+              name="expectedDuration"
+              value={formData.expectedDuration}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
+              placeholder="مثال: 30-60 دقيقة أو 3 ساعات"
+            />
           </div>
 
           {/* رفع الصورة */}
