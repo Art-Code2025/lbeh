@@ -34,7 +34,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   });
 
   // UI state
-  const [newFeature, setNewFeature] = useState('');
   const [uploading, setUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -89,7 +88,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       setUploading(false);
-      setNewFeature('');
     }
   }, [isOpen]);
 
@@ -146,21 +144,34 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     setImagePreview(null);
   };
 
-  const handleAddFeature = () => {
-    if (newFeature.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        features: [...prev.features, newFeature.trim()]
-      }));
-      setNewFeature('');
-    }
+  // ====== إدارة خيارات الأسئلة من نوع اختيار ======
+  const addOption = (qIdx: number) => {
+    setFormData(prev => {
+      const questions = [...prev.customQuestions];
+      const opts = questions[qIdx].options ? [...questions[qIdx].options] : [];
+      opts.push('');
+      questions[qIdx].options = opts;
+      return { ...prev, customQuestions: questions };
+    });
   };
 
-  const handleRemoveFeature = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      features: prev.features.filter((_, i) => i !== index)
-    }));
+  const removeOption = (qIdx: number, optIdx: number) => {
+    setFormData(prev => {
+      const questions = [...prev.customQuestions];
+      if (questions[qIdx].options) {
+        questions[qIdx].options = questions[qIdx].options!.filter((_, i) => i !== optIdx);
+      }
+      return { ...prev, customQuestions: questions };
+    });
+  };
+
+  const handleOptionChange = (qIdx: number, optIdx: number, value: string) => {
+    setFormData(prev => {
+      const questions = [...prev.customQuestions];
+      if (!questions[qIdx].options) questions[qIdx].options = [];
+      questions[qIdx].options![optIdx] = value;
+      return { ...prev, customQuestions: questions };
+    });
   };
 
   // Functions to manage custom questions
@@ -181,10 +192,23 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     }));
   };
   const updateCustomQuestion = (index: number, field: keyof CustomQuestion, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      customQuestions: prev.customQuestions.map((q, i) => i === index ? { ...q, [field]: value } : q)
-    }));
+    setFormData(prev => {
+      const updatedQuestions = prev.customQuestions.map((q, i) => {
+        if (i !== index) return q;
+        let updated: CustomQuestion = { ...q, [field]: value };
+
+        // إذا تغير نوع السؤال إلى اختيار، أضف خيارات افتراضية
+        if (field === 'type') {
+          if (value === 'select_single' || value === 'select_multiple') {
+            updated.options = updated.options && updated.options.length > 0 ? updated.options : ['', ''];
+          } else {
+            delete updated.options;
+          }
+        }
+        return updated;
+      });
+      return { ...prev, customQuestions: updatedQuestions };
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -387,44 +411,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             </div>
           </div>
 
-          {/* المميزات */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              المميزات
-            </label>
-            <div className="flex gap-2 mb-3">
-              <input
-                type="text"
-                value={newFeature}
-                onChange={(e) => setNewFeature(e.target.value)}
-                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
-                placeholder="أضف ميزة جديدة"
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddFeature())}
-              />
-              <button
-                type="button"
-                onClick={handleAddFeature}
-                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-            <ul className="space-y-2">
-              {formData.features.map((feature, index) => (
-                <li key={index} className="flex items-center justify-between bg-gray-700/50 p-3 rounded-lg border border-gray-600">
-                  <span className="text-white">{feature}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveFeature(index)}
-                    className="text-red-400 hover:text-red-300 p-1 hover:bg-red-500/20 rounded transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           {/* Custom Questions Section */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">الأسئلة المخصصة</label>
@@ -462,6 +448,36 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                       إجباري
                     </label>
                   </div>
+
+                  {/* خيارات السؤال إذا كان من نوع اختيار */}
+                  {(q.type === 'select_single' || q.type === 'select_multiple') && (
+                    <div className="space-y-2">
+                      {(q.options || []).map((opt, optIdx) => (
+                        <div key={optIdx} className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={opt}
+                            onChange={e => handleOptionChange(idx, optIdx, e.target.value)}
+                            placeholder={`الخيار ${optIdx + 1}`}
+                            className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                          />
+                          {(q.options || []).length > 2 && (
+                            <button type="button" onClick={() => removeOption(idx, optIdx)} className="text-red-400 hover:bg-red-500/20 p-1 rounded">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => addOption(idx)}
+                        className="flex items-center gap-2 px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm"
+                      >
+                        <Plus className="w-3 h-3" />
+                        إضافة خيار
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
               <button type="button" onClick={addCustomQuestion} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
