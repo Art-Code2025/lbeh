@@ -29,13 +29,24 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     description: '',
     mainImage: '',
     features: [] as string[],
-    price: ''
+    price: '',
+    customQuestions: [] as CustomQuestion[]
   });
 
   // UI state
   const [newFeature, setNewFeature] = useState('');
   const [uploading, setUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Custom question type
+  interface CustomQuestion {
+    id: string;
+    question: string;
+    type: 'text' | 'number' | 'select_single' | 'select_multiple' | 'date' | 'file';
+    required: boolean;
+    options?: string[];
+    placeholder?: string;
+  }
 
   // Initialize form when modal opens or editing service changes
   useEffect(() => {
@@ -51,7 +62,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           description: editingService.description || '',
           mainImage: editingService.mainImage || '',
           features: editingService.features || [],
-          price: editingService.price || ''
+          price: editingService.price || '',
+          customQuestions: editingService.customQuestions || []
         });
         setImagePreview(editingService.mainImage || null);
       } else {
@@ -65,7 +77,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           description: '',
           mainImage: '',
           features: [],
-          price: ''
+          price: '',
+          customQuestions: []
         });
         setImagePreview(null);
       }
@@ -150,6 +163,30 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     }));
   };
 
+  // Functions to manage custom questions
+  const addCustomQuestion = () => {
+    const newQ: CustomQuestion = {
+      id: `q_${Date.now()}`,
+      question: '',
+      type: 'text',
+      required: false,
+      placeholder: ''
+    };
+    setFormData(prev => ({ ...prev, customQuestions: [...prev.customQuestions, newQ] }));
+  };
+  const removeCustomQuestion = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      customQuestions: prev.customQuestions.filter((_, i) => i !== index)
+    }));
+  };
+  const updateCustomQuestion = (index: number, field: keyof CustomQuestion, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      customQuestions: prev.customQuestions.map((q, i) => i === index ? { ...q, [field]: value } : q)
+    }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -165,7 +202,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
 
     const serviceData = {
       ...formData,
-      isCloudinaryMainImage: !!formData.mainImage && formData.mainImage.includes('cloudinary')
+      isCloudinaryMainImage: !!formData.mainImage && formData.mainImage.includes('cloudinary'),
+      customQuestions: formData.customQuestions
     };
 
     onSave(serviceData);
@@ -385,6 +423,52 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 </li>
               ))}
             </ul>
+          </div>
+
+          {/* Custom Questions Section */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">الأسئلة المخصصة</label>
+            <div className="space-y-3">
+              {formData.customQuestions.map((q, idx) => (
+                <div key={q.id} className="bg-gray-700/40 p-4 rounded-lg border border-gray-600 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-white font-medium">سؤال {idx + 1}</span>
+                    <button type="button" onClick={() => removeCustomQuestion(idx)} className="text-red-400 hover:bg-red-500/20 p-1 rounded">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={q.question}
+                    onChange={e => updateCustomQuestion(idx,'question',e.target.value)}
+                    placeholder="نص السؤال"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <select
+                      value={q.type}
+                      onChange={e=>updateCustomQuestion(idx,'type',e.target.value)}
+                      className="px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                    >
+                      <option value="text">نص</option>
+                      <option value="number">رقم</option>
+                      <option value="select_single">اختيار واحد</option>
+                      <option value="select_multiple">اختيار متعدد</option>
+                      <option value="date">تاريخ</option>
+                      <option value="file">مرفق</option>
+                    </select>
+                    <label className="inline-flex items-center text-gray-300 text-sm">
+                      <input type="checkbox" checked={q.required} onChange={e=>updateCustomQuestion(idx,'required',e.target.checked)} className="mr-2" />
+                      إجباري
+                    </label>
+                  </div>
+                </div>
+              ))}
+              <button type="button" onClick={addCustomQuestion} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                <Plus className="w-4 h-4" />
+                إضافة سؤال
+              </button>
+            </div>
           </div>
 
           {/* أزرار التحكم */}
