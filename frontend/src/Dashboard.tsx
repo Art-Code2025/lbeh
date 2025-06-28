@@ -22,7 +22,8 @@ import {
   XCircle,
   RefreshCw,
   Volume2,
-  FileText
+  FileText,
+  Send
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -57,7 +58,7 @@ function Dashboard() {
   // Real-time bookings
   const [newBookingsCount, setNewBookingsCount] = useState(0);
   const [lastBookingUpdate, setLastBookingUpdate] = useState<Date>(new Date());
-  const [lastBookingIds, setLastBookingIds] = useState<Set<string>>(new Set());
+  const lastBookingIdsRef = useRef<Set<string>>(new Set());
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -100,9 +101,8 @@ function Dashboard() {
       setCategories(categoriesData);
       setBookings(bookingsData);
       
-      // Initialize lastBookingIds with current booking IDs
-      const currentBookingIds = new Set(bookingsData.map(booking => booking.id));
-      setLastBookingIds(currentBookingIds);
+      // حفظ معرفات الحجوزات الحالية في الـ ref
+      lastBookingIdsRef.current = new Set(bookingsData.map(booking => booking.id));
       
       setLastBookingUpdate(new Date());
     } catch (err) {
@@ -120,9 +120,9 @@ function Dashboard() {
         const newBookingsData = await fetchBookings();
         const newBookingIds = new Set(newBookingsData.map(booking => booking.id));
         
-        // Check for truly new bookings
+        // التحقق من الحجوزات الجديدة الفعلية باستعمال ref دائم التحديث
         const actualNewBookings = newBookingsData.filter(booking => 
-          !lastBookingIds.has(booking.id)
+          !lastBookingIdsRef.current.has(booking.id)
         );
         
         if (actualNewBookings.length > 0) {
@@ -144,8 +144,8 @@ function Dashboard() {
             draggable: true,
           });
           
-          // Update lastBookingIds
-          setLastBookingIds(newBookingIds);
+          // تحديث الـ ref بمعرفات الحجوزات الأحدث
+          lastBookingIdsRef.current = newBookingIds;
         }
         
         setBookings(newBookingsData);
@@ -294,6 +294,65 @@ function Dashboard() {
     if (minutes < 60) return `منذ ${minutes} دقيقة`;
     if (hours < 24) return `منذ ${hours} ساعة`;
     return `منذ ${days} يوم`;
+  };
+
+  /* =======================  بيانات المورّدين  ======================= */
+  interface Provider {
+    id: string;
+    name: string;
+    phone: string; // رقم واتساب بصيغة دولية بدون +
+    category: string; // معرف الفئة المرتبط بها المورّد
+  }
+
+  // يمكن لاحقاً جلبها من API، حالياً ثابتة لسهولة الاختبار
+  const providers: Provider[] = [
+    { id: 'd1', name: 'سائق توصيل داخلي 1', phone: '966501111111', category: 'internal_delivery' },
+    { id: 'd2', name: 'سائق توصيل داخلي 2', phone: '966502222222', category: 'internal_delivery' },
+    { id: 'e1', name: 'سائق رحلات خارجية', phone: '966503333333', category: 'external_trips' },
+    { id: 'm1', name: 'فني صيانة منزلية', phone: '966504444444', category: 'home_maintenance' },
+  ];
+
+  /* =======================  حالة مودال اختيار المورّد  ======================= */
+  const [showProviderModal, setShowProviderModal] = useState(false);
+  const [selectedBookingForSend, setSelectedBookingForSend] = useState<any | null>(null);
+
+  const openProviderModal = (booking: any) => {
+    setSelectedBookingForSend(booking);
+    setShowProviderModal(true);
+  };
+
+  const closeProviderModal = () => {
+    setShowProviderModal(false);
+    setSelectedBookingForSend(null);
+  };
+
+  const buildWhatsAppMessage = (booking: any) => {
+    let msg = `حجز جديد لخدمة ${booking.serviceName}\n`;
+    msg += `الاسم: ${booking.fullName}\n`;
+    msg += `الهاتف: ${booking.phoneNumber}\n`;
+    msg += `العنوان: ${booking.address}\n`;
+    if (booking.serviceDetails) msg += `تفاصيل الخدمة: ${booking.serviceDetails}\n`;
+    if (booking.customAnswers && Object.keys(booking.customAnswers).length > 0) {
+      msg += '\nالإجابات التفصيلية:\n';
+      Object.entries(booking.customAnswers).forEach(([key, val]) => {
+        if (Array.isArray(val)) {
+          msg += `• ${val.join(', ')}\n`;
+        } else {
+          msg += `• ${val}\n`;
+        }
+      });
+    }
+    msg += '\nيرجى التواصل مع العميل في أقرب وقت.';
+    return encodeURIComponent(msg);
+  };
+
+  const handleSendToProvider = (provider: Provider) => {
+    if (!selectedBookingForSend) return;
+    const message = buildWhatsAppMessage(selectedBookingForSend);
+    const waUrl = `https://wa.me/${provider.phone}?text=${message}`;
+    window.open(waUrl, '_blank');
+    toast.success(`📤 تم فتح واتساب لإرسال الحجز إلى ${provider.name}`);
+    closeProviderModal();
   };
 
   if (loading) {
@@ -813,6 +872,13 @@ function Dashboard() {
                           </div>
                           
                             <div className="flex flex-col gap-2 ml-4">
+                            {/* زر إرسال إلى المورّد */}
+                            <button
+                              onClick={() => openProviderModal(booking)}
+                              className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition-colors"
+                            >
+                              إرسال للمورد
+                            </button>
                             {booking.status === 'pending' && (
                               <>
                                 <button
@@ -871,6 +937,38 @@ function Dashboard() {
         onSave={handleCategorySave}
         editingCategory={editingCategory}
       />
+
+      {/* Modal اختيار المورّد */}
+      {showProviderModal && selectedBookingForSend && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir="rtl">
+          <div className="bg-gray-800 rounded-2xl p-8 max-w-md w-full border border-gray-700 relative">
+            <button onClick={closeProviderModal} className="absolute top-3 left-3 text-gray-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <Send className="w-5 h-5 text-green-400" />
+              إرسال الحجز إلى المورد
+            </h3>
+            <p className="text-sm text-gray-400 mb-4">اختر المورد لإرسال تفاصيل الحجز عبر واتساب:</p>
+            <div className="space-y-3 max-h-60 overflow-y-auto">
+              {providers.filter(p => p.category === selectedBookingForSend.serviceCategory).map(provider => (
+                <div key={provider.id} className="flex items-center justify-between bg-gray-700/40 p-3 rounded-lg border border-gray-600">
+                  <div className="text-white text-sm">{provider.name}</div>
+                  <button
+                    onClick={() => handleSendToProvider(provider)}
+                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm"
+                  >
+                    إرسال
+                  </button>
+                </div>
+              ))}
+              {providers.filter(p => p.category === selectedBookingForSend.serviceCategory).length === 0 && (
+                <p className="text-center text-gray-500 text-sm">لا يوجد مورّدون مرتبطون بهذه الفئة.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Enhanced Toast Container */}
       <ToastContainer
