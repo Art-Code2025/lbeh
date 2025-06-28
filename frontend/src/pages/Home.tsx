@@ -396,8 +396,8 @@ const Home: React.FC = () => {
                 >
                   <div className="flex flex-col h-full">
                     <div className="mb-6">
-                      <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl ${getColorClass(category.color)} transition-colors duration-300`}>
-                        {getIconComponent(category.icon)}
+                      <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl ${getColorClass(category.color || '')} transition-colors duration-300`}>
+                        {getIconComponent(category.icon || '')}
                       </div>
                     </div>
                     <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-3 group-hover:text-cyan-600">

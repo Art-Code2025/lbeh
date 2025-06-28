@@ -24,7 +24,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 // تعريف نوع الخدمة
 interface Service {
-  id: number;
+  id: string | number;
   name: string;
   category: string;
   categoryName: string;
@@ -38,6 +38,16 @@ interface Service {
   duration?: string;
   availability?: string;
   price?: string;
+  customQuestions?: CustomQuestion[];
+}
+
+interface CustomQuestion {
+  id: string;
+  question: string;
+  type: 'text' | 'number' | 'select_single' | 'select_multiple' | 'date' | 'file';
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
 }
 
 // تعريف نوع بيانات النموذج
@@ -62,6 +72,7 @@ interface BookingFormData {
   passengers?: string;
   issueDescription?: string;
   urgencyLevel?: string;
+  customAnswers?: Record<string, any>;
 }
 
 const BookService: React.FC = () => {
@@ -81,7 +92,8 @@ const BookService: React.FC = () => {
     serviceDetails: '',
     priority: 'normal',
     preferredTime: '',
-    notes: ''
+    notes: '',
+    customAnswers: {}
   });
   
   const [formErrors, setFormErrors] = useState<Partial<BookingFormData>>({});
@@ -110,23 +122,30 @@ const BookService: React.FC = () => {
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         
-        // البحث عن الفئة
-        const categoriesRef = collection(db, 'categories');
-        const snapshot = await getDocs(categoriesRef);
+        // البحث عن الخدمة
+        const servicesRef = collection(db, 'services');
+        const snapshot = await getDocs(servicesRef);
         
-        let foundService = null;
+        let foundService: Service | null = null;
         snapshot.forEach((doc) => {
           if (doc.id === id) {
-            const category = doc.data();
+            const s = doc.data();
             foundService = {
               id: doc.id,
-              name: category.name,
-              category: doc.id,
-              categoryName: category.name,
-              description: category.description,
-              mainImage: getDefaultImage(doc.id),
-              price: getDefaultPrice(doc.id),
-              duration: getDefaultDuration(doc.id)
+              name: s.name || '',
+              category: s.category || s.categoryId || '',
+              categoryName: s.categoryName || '',
+              description: s.description || s.homeShortDescription || '',
+              detailsShortDescription: s.detailsShortDescription || s.homeShortDescription || '',
+              mainImage: s.mainImage || getDefaultImage(s.category || ''),
+              price: s.price || s.pricing || getDefaultPrice(s.category || ''),
+              duration: s.duration || getDefaultDuration(s.category || ''),
+              detailedImages: s.detailedImages || [],
+              imageDetails: s.imageDetails || [],
+              features: s.features || [],
+              availability: s.availability || 'متاح 24/7',
+              homeShortDescription: s.homeShortDescription || '',
+              customQuestions: s.customQuestions || []
             };
           }
         });
@@ -218,6 +237,18 @@ const BookService: React.FC = () => {
       if (!formData.serviceDetails.trim()) {
         errors.serviceDetails = 'وصف الخدمة المطلوبة مطلوب';
       }
+
+      // تحقق من الأسئلة المخصصة
+      if (service && service.customQuestions) {
+        service.customQuestions.forEach(q => {
+          if (q.required) {
+            const ans = formData.customAnswers?.[q.id];
+            if (!ans || (Array.isArray(ans) && ans.length === 0)) {
+              (errors as any)[`custom_${q.id}`] = 'مطلوب';
+            }
+          }
+        });
+      }
     }
 
     setFormErrors(errors);
@@ -272,6 +303,9 @@ const BookService: React.FC = () => {
           issueDescription: formData.issueDescription,
           urgencyLevel: formData.urgencyLevel,
           preferredTime: formData.preferredTime
+        }),
+        ...(service.category === 'home_maintenance' && {
+          customAnswers: formData.customAnswers
         })
       };
 
@@ -589,6 +623,101 @@ const BookService: React.FC = () => {
                           <p className="text-red-400 text-sm mt-1">{formErrors.serviceDetails}</p>
                         )}
                       </div>
+
+                      {/* الأسئلة المخصصة */}
+                      {service?.customQuestions && service.customQuestions.length > 0 && (
+                        <div className="space-y-6">
+                          <h4 className="text-lg font-semibold text-white">أسئلة إضافية</h4>
+                          {service.customQuestions.map((q) => (
+                            <div key={q.id} className="space-y-2">
+                              <label className="block text-sm font-medium text-white">
+                                {q.question} {q.required && <span className="text-red-400">*</span>}
+                              </label>
+
+                              {q.type === 'text' && (
+                                <input
+                                  type="text"
+                                  value={formData.customAnswers?.[q.id] || ''}
+                                  onChange={(e) => setFormData(prev => ({
+                                    ...prev,
+                                    customAnswers: { ...(prev.customAnswers || {}), [q.id]: e.target.value }
+                                  }))}
+                                  className="w-full px-4 py-3 bg-white bg-opacity-10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-yellow"
+                                  placeholder={q.placeholder || ''}
+                                  required={q.required}
+                                />
+                              )}
+
+                              {q.type === 'number' && (
+                                <input
+                                  type="number"
+                                  value={formData.customAnswers?.[q.id] || ''}
+                                  onChange={(e) => setFormData(prev => ({
+                                    ...prev,
+                                    customAnswers: { ...(prev.customAnswers || {}), [q.id]: e.target.value }
+                                  }))}
+                                  className="w-full px-4 py-3 bg-white bg-opacity-10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-yellow"
+                                  placeholder={q.placeholder || ''}
+                                  required={q.required}
+                                />
+                              )}
+
+                              {q.type === 'select_single' && q.options && (
+                                <select
+                                  value={formData.customAnswers?.[q.id] || ''}
+                                  onChange={(e) => setFormData(prev => ({
+                                    ...prev,
+                                    customAnswers: { ...(prev.customAnswers || {}), [q.id]: e.target.value }
+                                  }))}
+                                  className="w-full px-4 py-3 bg-white bg-opacity-10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-yellow"
+                                  required={q.required}
+                                >
+                                  <option value="">اختر خياراً</option>
+                                  {q.options.map((opt, idx) => (
+                                    <option key={idx} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              )}
+
+                              {q.type === 'select_multiple' && q.options && (
+                                <div className="space-y-2">
+                                  {q.options.map((opt, idx) => (
+                                    <label key={idx} className="flex items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={(formData.customAnswers?.[q.id] || []).includes(opt)}
+                                        onChange={(e) => {
+                                          const current = formData.customAnswers?.[q.id] || [];
+                                          const newArr = e.target.checked ? [...current, opt] : current.filter((o: string) => o !== opt);
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            customAnswers: { ...(prev.customAnswers || {}), [q.id]: newArr }
+                                          }));
+                                        }}
+                                        className="w-4 h-4 text-yellow bg-white/10 border-white/20 rounded"
+                                      />
+                                      <span className="text-white">{opt}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+
+                              {q.type === 'date' && (
+                                <input
+                                  type="date"
+                                  value={formData.customAnswers?.[q.id] || ''}
+                                  onChange={(e) => setFormData(prev => ({
+                                    ...prev,
+                                    customAnswers: { ...(prev.customAnswers || {}), [q.id]: e.target.value }
+                                  }))}
+                                  className="w-full px-4 py-3 bg-white bg-opacity-10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-yellow"
+                                  required={q.required}
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       <div className="grid md:grid-cols-2 gap-4">
                         <div>
