@@ -5,17 +5,16 @@ const API_BASE_URL = process.env.NODE_ENV === 'production'
   ? '/api' 
   : 'http://localhost:8888/.netlify/functions';
 
-interface Provider {
+export interface Provider {
     id: string;
     name: string;
-    category: 'internal_delivery' | 'external_trips' | 'home_maintenance';
-    whatsapp: string;
-    services: string[];
-    rating: number;
-    available: boolean;
-    specialties: string[];
-    destinations: string[];
+    phone: string; // رقم واتساب بصيغة دولية بدون +
+    category: string; // معرف الفئة المرتبط بها
+    createdAt?: string;
+    updatedAt?: string;
 }
+
+const COLLECTION = 'providers';
 
 // Enhanced API call function
 async function makeApiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -110,42 +109,53 @@ async function deleteFromFirebase(collectionName: string, id: string): Promise<{
     }
 }
 
-export const fetchProviders = async (): Promise<Provider[]> => {
-    try {
-        return await makeApiCall<Provider[]>('/providers');
-    } catch (error) {
-        return await getFromFirebase<Provider>('providers');
-    }
-};
+export const providersApi = {
+    async getAll(): Promise<Provider[]> {
+        try {
+            const snapshot = await getDocs(collection(db, COLLECTION));
+            const providers: Provider[] = [];
+            snapshot.forEach(docSnap => {
+                providers.push({ id: docSnap.id, ...docSnap.data() } as Provider);
+            });
+            return providers;
+        } catch (err) {
+            console.error('Error fetching providers:', err);
+            throw new Error('فشل في جلب المورّدين');
+        }
+    },
 
-export const createProvider = async (providerData: Omit<Provider, 'id'>): Promise<{id: string}> => {
-    try {
-        return await makeApiCall('/providers', {
-            method: 'POST',
-            body: JSON.stringify(providerData),
-        });
-    } catch (error) {
-        return await addToFirebase('providers', providerData);
-    }
-};
+    async create(data: Omit<Provider, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+        try {
+            const docRef = await addDoc(collection(db, COLLECTION), {
+                ...data,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            });
+            return docRef.id;
+        } catch (err) {
+            console.error('Error creating provider:', err);
+            throw new Error('فشل في إنشاء المورّد');
+        }
+    },
 
-export const updateProvider = async (id: string, providerData: Partial<Provider>): Promise<{message: string}> => {
-    try {
-        return await makeApiCall(`/providers?id=${id}`, {
-            method: 'PUT',
-            body: JSON.stringify({ id, ...providerData }),
-        });
-    } catch (error) {
-        return await updateInFirebase('providers', id, providerData);
-    }
-};
+    async update(id: string, data: Partial<Provider>) {
+        try {
+            await updateDoc(doc(db, COLLECTION, id), {
+                ...data,
+                updatedAt: new Date().toISOString()
+            });
+        } catch (err) {
+            console.error('Error updating provider:', err);
+            throw new Error('فشل في تحديث المورّد');
+        }
+    },
 
-export const deleteProvider = async (id: string): Promise<{message: string}> => {
-    try {
-        return await makeApiCall(`/providers?id=${id}`, {
-            method: 'DELETE',
-        });
-    } catch (error) {
-        return await deleteFromFirebase('providers', id);
+    async delete(id: string) {
+        try {
+            await deleteDoc(doc(db, COLLECTION, id));
+        } catch (err) {
+            console.error('Error deleting provider:', err);
+            throw new Error('فشل في حذف المورّد');
+        }
     }
 }; 

@@ -32,15 +32,18 @@ import 'react-toastify/dist/ReactToastify.css';
 import { servicesApi, categoriesApi, Service, Category } from './services/servicesApi';
 import { fetchBookings, Booking, updateBooking } from './services/bookingsApi';
 import { testCloudinaryConnection } from './services/cloudinary';
+import { providersApi, Provider } from './services/providersApi';
 
 // Components
 import ServiceModal from './components/ServiceModal';
 import CategoryModal from './components/CategoryModal';
+import ProviderModal from './components/ProviderModal';
 
 function Dashboard() {
   // State
   const [services, setServices] = useState<Service[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +55,7 @@ function Dashboard() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   
   // UI states
-  const [activeTab, setActiveTab] = useState<'overview' | 'services' | 'categories' | 'bookings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'services' | 'categories' | 'providers' | 'bookings'>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Real-time bookings
@@ -61,6 +64,10 @@ function Dashboard() {
   const lastBookingIdsRef = useRef<Set<string>>(new Set());
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Provider modal states
+  const [showProviderModalForm, setShowProviderModalForm] = useState(false);
+  const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
 
   // Initialize notification sound
   useEffect(() => {
@@ -91,14 +98,16 @@ function Dashboard() {
       setLoading(true);
       setError(null);
       
-      const [servicesData, categoriesData, bookingsData] = await Promise.all([
+      const [servicesData, categoriesData, providersData, bookingsData] = await Promise.all([
         servicesApi.getAll(),
         categoriesApi.getAll(),
+        providersApi.getAll(),
         fetchBookings()
       ]);
       
       setServices(servicesData);
       setCategories(categoriesData);
+      setProviders(providersData);
       setBookings(bookingsData);
       
       // حفظ معرفات الحجوزات الحالية في الـ ref
@@ -297,20 +306,13 @@ function Dashboard() {
   };
 
   /* =======================  بيانات المورّدين  ======================= */
-  interface Provider {
-    id: string;
-    name: string;
-    phone: string; // رقم واتساب بصيغة دولية بدون +
-    category: string; // معرف الفئة المرتبط بها المورّد
-  }
-
   // يمكن لاحقاً جلبها من API، حالياً ثابتة لسهولة الاختبار
-  const providers: Provider[] = [
-    { id: 'd1', name: 'سائق توصيل داخلي 1', phone: '966501111111', category: 'internal_delivery' },
-    { id: 'd2', name: 'سائق توصيل داخلي 2', phone: '966502222222', category: 'internal_delivery' },
-    { id: 'e1', name: 'سائق رحلات خارجية', phone: '966503333333', category: 'external_trips' },
-    { id: 'm1', name: 'فني صيانة منزلية', phone: '966504444444', category: 'home_maintenance' },
-  ];
+  // const providers: Provider[] = [
+  //   { id: 'd1', name: 'سائق توصيل داخلي 1', phone: '966501111111', category: 'internal_delivery' },
+  //   { id: 'd2', name: 'سائق توصيل داخلي 2', phone: '966502222222', category: 'internal_delivery' },
+  //   { id: 'e1', name: 'سائق رحلات خارجية', phone: '966503333333', category: 'external_trips' },
+  //   { id: 'm1', name: 'فني صيانة منزلية', phone: '966504444444', category: 'home_maintenance' },
+  // ];
 
   /* =======================  حالة مودال اختيار المورّد  ======================= */
   const [showProviderModal, setShowProviderModal] = useState(false);
@@ -353,6 +355,41 @@ function Dashboard() {
     window.open(waUrl, '_blank');
     toast.success(`📤 تم فتح واتساب لإرسال الحجز إلى ${provider.name}`);
     closeProviderModal();
+  };
+
+  // ----- Provider handlers -----
+  const handleProviderSave = async (data: Omit<Provider, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      if (editingProvider) {
+        await providersApi.update(editingProvider.id, data);
+        toast.success('✅ تم تحديث المورّد بنجاح');
+      } else {
+        await providersApi.create(data);
+        toast.success('✅ تم إضافة المورّد بنجاح');
+      }
+      setShowProviderModalForm(false);
+      setEditingProvider(null);
+      await loadData();
+    } catch (err) {
+      toast.error('❌ فشل في حفظ المورّد');
+    }
+  };
+
+  const handleProviderEdit = (p: Provider) => {
+    setEditingProvider(p);
+    setShowProviderModalForm(true);
+  };
+
+  const handleProviderDelete = async (id: string) => {
+    if (window.confirm('هل أنت متأكد من حذف هذا المورّد؟')) {
+      try {
+        await providersApi.delete(id);
+        toast.success('✅ تم حذف المورّد');
+        await loadData();
+      } catch (err) {
+        toast.error('❌ فشل في حذف المورّد');
+      }
+    }
   };
 
   if (loading) {
@@ -458,6 +495,7 @@ function Dashboard() {
               { id: 'overview', label: 'نظرة عامة', icon: BarChart3, count: null },
               { id: 'categories', label: 'إدارة الفئات', icon: Tag, count: categories.length },
               { id: 'services', label: 'إدارة الخدمات', icon: Package, count: services.length },
+              { id: 'providers', label: 'إدارة المورّدين', icon: Users, count: providers.length },
               { id: 'bookings', label: 'إدارة الحجوزات', icon: Calendar, count: bookings.length, hasNew: newBookingsCount > 0 }
             ].map(({ id, label, icon: Icon, count, hasNew }) => (
               <button
@@ -531,6 +569,7 @@ function Dashboard() {
                 {activeTab === 'overview' && '📊 نظرة عامة'}
                 {activeTab === 'categories' && '🏷️ إدارة الفئات'}
                 {activeTab === 'services' && '📦 إدارة الخدمات'}
+                {activeTab === 'providers' && '👥 إدارة المورّدين'}
                 {activeTab === 'bookings' && '📅 إدارة الحجوزات'}
               </h2>
               {activeTab === 'bookings' && (
@@ -739,6 +778,41 @@ function Dashboard() {
                         className="w-full h-32 object-cover rounded-xl mt-3 border border-gray-600/50"
                       />
                     )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'providers' && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-white">المورّدون</h3>
+                <button
+                  onClick={() => setShowProviderModalForm(true)}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl transition-all duration-200 shadow-lg transform hover:scale-105"
+                >
+                  <Plus className="w-4 h-4" />
+                  إضافة مورّد
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {providers.map(provider => (
+                  <div key={provider.id} className="bg-gray-800/50 backdrop-blur-lg rounded-2xl p-6 border border-gray-700/50 hover:border-gray-600/50 transition-all duration-300 transform hover:scale-105 shadow-xl">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="font-bold text-white text-lg">{provider.name}</h4>
+                        <p className="text-gray-400 text-sm">{provider.phone}</p>
+                      </div>
+                      <span className="text-sm px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                        {categories.find(c => c.id === provider.category)?.name || provider.category}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleProviderEdit(provider)} className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 rounded-lg transition-colors"><Edit className="w-4 h-4"/></button>
+                      <button onClick={() => handleProviderDelete(provider.id)} className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"><Trash2 className="w-4 h-4"/></button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -969,6 +1043,18 @@ function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Provider Modal */}
+      <ProviderModal
+        isOpen={showProviderModalForm}
+        onClose={() => {
+          setShowProviderModalForm(false);
+          setEditingProvider(null);
+        }}
+        onSave={handleProviderSave}
+        editingProvider={editingProvider}
+        categories={categories}
+      />
 
       {/* Enhanced Toast Container */}
       <ToastContainer
