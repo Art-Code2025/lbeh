@@ -21,7 +21,8 @@ import {
   CheckCircle,
   XCircle,
   RefreshCw,
-  Volume2
+  Volume2,
+  FileText
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -769,6 +770,44 @@ function Dashboard() {
                                 {booking.serviceDetails && (
                                 <div className="bg-gray-600/30 rounded-lg p-3 mb-4">
                                   <p className="text-gray-300 text-sm"><strong>تفاصيل الخدمة:</strong> {booking.serviceDetails}</p>
+                                  </div>
+                                )}
+
+                                {/* عرض إجابات الأسئلة المخصصة */}
+                                {booking.customAnswers && Object.keys(booking.customAnswers).length > 0 && (
+                                  <div className="bg-purple-500/10 rounded-lg p-3 mb-4 border border-purple-500/30">
+                                    <h5 className="text-purple-300 font-semibold text-sm mb-3 flex items-center gap-2">
+                                      <FileText className="w-4 h-4" />
+                                      إجابات الأسئلة المخصصة
+                                    </h5>
+                                    <div className="space-y-2">
+                                      {(() => {
+                                        // البحث عن الخدمة المرتبطة للحصول على أسماء الأسئلة
+                                        const relatedService = services.find(s => s.id === booking.serviceId);
+                                        return Object.entries(booking.customAnswers).map(([questionId, answer]) => {
+                                          // البحث عن السؤال المطابق
+                                          const question = relatedService?.customQuestions?.find(q => q.id === questionId);
+                                          const questionText = question?.question || `السؤال ${questionId}`;
+                                          
+                                          // تنسيق الإجابة حسب نوعها
+                                          let formattedAnswer = '';
+                                          if (Array.isArray(answer)) {
+                                            formattedAnswer = answer.join(', ');
+                                          } else if (typeof answer === 'string' && answer.trim() !== '') {
+                                            formattedAnswer = answer;
+                                          } else if (answer !== null && answer !== undefined) {
+                                            formattedAnswer = String(answer);
+                                          }
+                                          
+                                          return formattedAnswer ? (
+                                            <div key={questionId} className="text-gray-300 text-sm">
+                                              <span className="text-purple-200 font-medium">{questionText}:</span>
+                                              <span className="mr-2">{formattedAnswer}</span>
+                                            </div>
+                                          ) : null;
+                                        });
+                                      })()}
+                                    </div>
                                   </div>
                                 )}
                           </div>

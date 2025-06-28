@@ -9,33 +9,46 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 
+// Services API functions
+export const API_BASE = '/.netlify/functions';
+
 // Types
-export interface Service {
+export interface Category {
   id: string;
   name: string;
-  category: string;
-  categoryName: string;
-  homeShortDescription: string;
-  detailsShortDescription?: string;
-  description?: string;
-  mainImage?: string;
-  features?: string[];
-  duration?: string;
-  availability?: string;
-  price?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
-export interface Category {
+interface CustomQuestion {
+  id: string;
+  question: string;
+  type: 'text' | 'number' | 'select_single' | 'select_multiple' | 'date' | 'file';
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
+}
+
+export interface Service {
   id: string;
   name: string;
-  description: string;
-  icon: string;
-  color: string;
-  serviceCount?: number;
+  category?: string;
+  categoryId?: string;
+  categoryName?: string;
+  description?: string;
+  homeShortDescription?: string;
+  detailsShortDescription?: string;
+  mainImage?: string;
+  detailedImages?: string[];
+  imageDetails?: string[];
+  features?: string[];
+  duration?: string;
+  availability?: string;
+  price?: string;
+  pricing?: string;
   createdAt?: string;
   updatedAt?: string;
+  customQuestions?: CustomQuestion[];
 }
 
 // Services API

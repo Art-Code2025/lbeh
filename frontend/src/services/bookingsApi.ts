@@ -9,26 +9,30 @@ export interface Booking {
   id: string;
   serviceId: string;
   serviceName: string;
-  serviceCategory: string;
+  serviceCategory?: string;
   fullName: string;
   phoneNumber: string;
   address: string;
   serviceDetails?: string;
   status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
-  createdAt: string;
-  updatedAt: string;
+  estimatedPrice?: string;
+  appointmentTime?: string;
+  urgencyLevel?: 'low' | 'medium' | 'high';
+  notes?: string;
+  customAnswers?: Record<string, any>;
   
-  // Optional fields based on service type
-  deliveryLocation?: string;
-  urgentDelivery?: boolean;
+  // Additional fields for different service types
   startLocation?: string;
   destination?: string;
-  appointmentTime?: string;
-  returnTrip?: boolean;
-  passengers?: number;
+  selectedDestination?: string;
+  tripDuration?: string;
   issueDescription?: string;
-  urgencyLevel?: 'low' | 'medium' | 'high';
   preferredTime?: string;
+  deliveryLocation?: string;
+  urgentDelivery?: boolean;
+  
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface BookingStats {
@@ -151,7 +155,7 @@ export const fetchBookings = async (): Promise<any[]> => {
     try {
         return await makeApiCall<any[]>('/bookings');
     } catch (error) {
-        console.log('🔄 Using Firebase for bookings');
+        console.log('�� Using Firebase for bookings');
         return await getBookingsFromFirebase();
     }
 };
@@ -217,10 +221,11 @@ function calculateStats(bookings: Booking[]): BookingStats {
     }
 
     // Count by category
-    if (stats.byCategory[booking.serviceCategory]) {
-      stats.byCategory[booking.serviceCategory]++;
+    const category = booking.serviceCategory || 'غير محدد';
+    if (stats.byCategory[category]) {
+      stats.byCategory[category]++;
     } else {
-      stats.byCategory[booking.serviceCategory] = 1;
+      stats.byCategory[category] = 1;
     }
 
     // Count by service
@@ -248,7 +253,7 @@ function calculateStats(bookings: Booking[]): BookingStats {
   stats.dailyStats = last7Days.map(date => ({
     date,
     count: bookings.filter(booking => 
-      booking.createdAt.split('T')[0] === date
+      booking.createdAt && booking.createdAt.split('T')[0] === date
     ).length
   }));
 

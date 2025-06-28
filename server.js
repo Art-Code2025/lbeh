@@ -355,7 +355,7 @@ app.get('/api/bookings/:id', async (req, res) => {
 app.post('/api/bookings', async (req, res) => {
   try {
     const bookings = await readJsonFile(BOOKINGS_FILE);
-    const { serviceId, serviceName, fullName, phoneNumber, address, serviceDetails } = req.body;
+    const { serviceId, serviceName, fullName, phoneNumber, address, serviceDetails, customAnswers } = req.body;
 
     // التحقق من وجود الخدمة
     const services = await readJsonFile(SERVICES_FILE);
@@ -373,6 +373,7 @@ app.post('/api/bookings', async (req, res) => {
       phoneNumber,
       address,
       serviceDetails,
+      customAnswers: customAnswers || {}, // إجابات الأسئلة المخصصة
       status: 'pending', // pending, confirmed, in_progress, completed, cancelled
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()

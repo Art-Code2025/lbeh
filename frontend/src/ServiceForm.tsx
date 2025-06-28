@@ -36,6 +36,17 @@ interface Service {
   duration?: string;
   availability?: string;
   price?: string;
+  customQuestions?: CustomQuestion[];
+}
+
+// تعريف نوع السؤال المخصص
+interface CustomQuestion {
+  id: string;
+  question: string;
+  type: 'text' | 'number' | 'select_single' | 'select_multiple' | 'date' | 'file';
+  required: boolean;
+  options?: string[]; // للأسئلة من نوع select
+  placeholder?: string;
 }
 
 function ServiceForm() {
@@ -60,7 +71,8 @@ function ServiceForm() {
     features: [''],
     duration: '',
     availability: '24/7',
-    price: ''
+    price: '',
+    customQuestions: []
   });
 
   const [errors, setErrors] = useState<Partial<Service>>({});
@@ -105,6 +117,12 @@ function ServiceForm() {
       title: 'الصور والوسائط', 
       icon: ImageIcon,
       fields: ['mainImage', 'detailedImages']
+    },
+    { 
+      id: 4, 
+      title: 'الأسئلة المخصصة', 
+      icon: Tag,
+      fields: ['customQuestions']
     }
   ];
 
@@ -304,6 +322,54 @@ function ServiceForm() {
 
   const getImageSrc = (image: string) => {
     return image;
+  };
+
+  // دوال إدارة الأسئلة المخصصة
+  const addCustomQuestion = () => {
+    const newQuestion: CustomQuestion = {
+      id: `question_${Date.now()}`,
+      question: '',
+      type: 'text',
+      required: false,
+      placeholder: ''
+    };
+    setFormData(prev => ({
+      ...prev,
+      customQuestions: [...(prev.customQuestions || []), newQuestion]
+    }));
+  };
+
+  const removeCustomQuestion = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      customQuestions: prev.customQuestions?.filter((_, i) => i !== index) || []
+    }));
+  };
+
+  const handleCustomQuestionChange = (index: number, field: keyof CustomQuestion, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      customQuestions: prev.customQuestions?.map((question, i) => {
+        if (i === index) {
+          const updatedQuestion = { ...question, [field]: value };
+          
+          // إضافة خيارات فارغة عند تغيير النوع إلى select
+          if (field === 'type' && (value === 'select_single' || value === 'select_multiple')) {
+            if (!updatedQuestion.options || updatedQuestion.options.length === 0) {
+              updatedQuestion.options = [''];
+            }
+          }
+          
+          // إزالة الخيارات عند تغيير النوع لشيء آخر غير select
+          if (field === 'type' && value !== 'select_single' && value !== 'select_multiple') {
+            delete updatedQuestion.options;
+          }
+          
+          return updatedQuestion;
+        }
+        return question;
+      }) || []
+    }));
   };
 
   if (loading) {
@@ -711,6 +777,175 @@ function ServiceForm() {
                         </label>
                       </div>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Custom Questions */}
+              {currentStep === 4 && (
+                <div className="space-y-6">
+                  <div className="text-center py-4">
+                    <h3 className="text-xl font-bold text-white mb-2">الأسئلة المخصصة في نموذج الحجز</h3>
+                    <p className="text-gray-400">أضف أسئلة مخصصة ستظهر في نموذج الحجز لهذه الخدمة</p>
+                  </div>
+
+                  {/* Custom Questions */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <label className="block text-sm font-semibold text-gray-300">
+                        الأسئلة المخصصة ({(formData.customQuestions || []).length})
+                      </label>
+                      <button
+                        type="button"
+                        onClick={addCustomQuestion}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                      >
+                        <Plus className="w-4 h-4" />
+                        إضافة سؤال جديد
+                      </button>
+                    </div>
+
+                    {(formData.customQuestions || []).length === 0 ? (
+                      <div className="text-center py-8 bg-gray-700/50 rounded-xl border-2 border-dashed border-gray-600">
+                        <Package className="w-12 h-12 text-gray-500 mx-auto mb-3" />
+                        <p className="text-gray-400 mb-4">لم يتم إضافة أي أسئلة مخصصة بعد</p>
+                        <button
+                          type="button"
+                          onClick={addCustomQuestion}
+                          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                        >
+                          إضافة السؤال الأول
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {(formData.customQuestions || []).map((question, index) => (
+                          <div key={question.id} className="bg-gray-700/50 rounded-xl p-6 border border-gray-600">
+                            <div className="flex items-center justify-between mb-4">
+                              <h4 className="font-medium text-white">السؤال {index + 1}</h4>
+                              <button
+                                type="button"
+                                onClick={() => removeCustomQuestion(index)}
+                                className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                                title="حذف السؤال"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* نص السؤال */}
+                              <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                  نص السؤال *
+                                </label>
+                                <input
+                                  type="text"
+                                  value={question.question}
+                                  onChange={(e) => handleCustomQuestionChange(index, 'question', e.target.value)}
+                                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
+                                  placeholder="مثال: ما هو العنوان التفصيلي؟"
+                                  required
+                                />
+                              </div>
+
+                              {/* نوع السؤال */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                  نوع السؤال *
+                                </label>
+                                <select
+                                  value={question.type}
+                                  onChange={(e) => handleCustomQuestionChange(index, 'type', e.target.value)}
+                                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                                >
+                                  <option value="text">نص</option>
+                                  <option value="number">رقم</option>
+                                  <option value="select_single">اختيار واحد</option>
+                                  <option value="select_multiple">اختيار متعدد</option>
+                                  <option value="date">تاريخ</option>
+                                  <option value="file">مرفق</option>
+                                </select>
+                              </div>
+
+                              {/* السؤال إجباري */}
+                              <div className="flex items-center">
+                                <label className="flex items-center cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={question.required}
+                                    onChange={(e) => handleCustomQuestionChange(index, 'required', e.target.checked)}
+                                    className="mr-2 w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                                  />
+                                  <span className="text-gray-300 font-medium">سؤال إجباري</span>
+                                </label>
+                              </div>
+
+                              {/* النص الإرشادي */}
+                              <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                  النص الإرشادي (اختياري)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={question.placeholder || ''}
+                                  onChange={(e) => handleCustomQuestionChange(index, 'placeholder', e.target.value)}
+                                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
+                                  placeholder="مثال: أدخل العنوان بالتفصيل"
+                                />
+                              </div>
+
+                              {/* خيارات الاختيار */}
+                              {(question.type === 'select_single' || question.type === 'select_multiple') && (
+                                <div className="md:col-span-2">
+                                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    خيارات الاختيار *
+                                  </label>
+                                  <div className="space-y-2">
+                                    {(question.options || []).map((option, optionIndex) => (
+                                      <div key={optionIndex} className="flex gap-2">
+                                        <input
+                                          type="text"
+                                          value={option}
+                                          onChange={(e) => {
+                                            const newOptions = [...(question.options || [])];
+                                            newOptions[optionIndex] = e.target.value;
+                                            handleCustomQuestionChange(index, 'options', newOptions);
+                                          }}
+                                          className="flex-1 px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
+                                          placeholder={`الخيار ${optionIndex + 1}`}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const newOptions = (question.options || []).filter((_, i) => i !== optionIndex);
+                                            handleCustomQuestionChange(index, 'options', newOptions);
+                                          }}
+                                          className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                                        >
+                                          <X className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newOptions = [...(question.options || []), ''];
+                                        handleCustomQuestionChange(index, 'options', newOptions);
+                                      }}
+                                      className="flex items-center gap-2 px-3 py-2 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors text-sm"
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                      إضافة خيار
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
